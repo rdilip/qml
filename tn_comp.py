@@ -1,6 +1,5 @@
-""" TN learning using a simplified method of Google's paper. There is nontrivial bond
-dimension on the side wings which is dumb """
-
+# !/usr/bin/env python
+# TODO: Type hints and comments...
 from typing import Mapping, List
 
 import jax
@@ -13,6 +12,7 @@ from progress.bar import Bar
 
 from data import *
 from data_tracker import DataTracker
+import sys
 
 Batch = Mapping[str, np.ndarray]
 TN = Mapping[str, jnp.ndarray]
@@ -85,7 +85,7 @@ def main(chi, chi_img, mode, Nqubits, dataset="mnist:3.*.*"):
         tn = optax.apply_updates(tn, updates)
         return tn, opt_state
 
-    shape = (28,28)
+    shape = (8,8)
 
     L = int(np.ceil(np.log2(shape[0]*shape[1])))
 
@@ -96,8 +96,7 @@ def main(chi, chi_img, mode, Nqubits, dataset="mnist:3.*.*"):
 
     tn = init(L, chi)
     batch_size = 50
-    Nepochs = 100
-
+    Nepochs = 30
     process = lambda x: process_img(x, 
                                     shape,
                                     None,
@@ -149,6 +148,8 @@ def main(chi, chi_img, mode, Nqubits, dataset="mnist:3.*.*"):
     dt.save()
 
 if __name__ == '__main__':
+    print(sys.argv[1:])
+    raise ValueError
     main(10,4,"interleave",1)
     # main: chi, chi_img, mode, Nqubits, dataset="mnist:3.*.*"
 
