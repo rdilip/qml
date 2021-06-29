@@ -18,18 +18,24 @@ Batch = Mapping[str, np.ndarray]
 TN = Mapping[str, jnp.ndarray]
 
 @jax.jit
-def evaluate(tn: TN, img: jnp.ndarray) -> jnp.ndarray:
-    # TODO: the einsum is EXPENSIVE -- figure out a better way to do this.
-    l, r, center = tn['left'], tn['right'], tn['center']
-    l = jnp.einsum("ndab,nd->nab", l, img[0])
-    r = jnp.einsum("ndab,nd->nab", r, img[1])
+def evaluate(tn, img):
+    """ img should be shape (L, 2) """
 
+    L = img.shape[0]
+    linit = jnp.tensordot(tn['left_boundary'], img[0], [0,0])
+    rinit = jnp.tensordot(tn['right_boundary'], img[-1], [0,0])
+    left = jnp.einsum("xalr,xa->xlr", tn['left'], img[1:L//2])
+    
+    right = jnp.einsum("xalr,xa->xlr", tn['right'], img[L//2:-1])
     f = lambda a, b: (jnp.matmul(a, b), b)
-    l, _ = jax.lax.scan(f, jnp.eye(l.shape[1]), l)
-    r, _ = jax.lax.scan(f, jnp.eye(r.shape[1]), r)
-
-    pred = jnp.tensordot(l, center, [1,1])
-    pred = jnp.tensordot(pred, r, [[0,2],[1,0]])
+    left, _ = jax.lax.scan(f, jnp.eye(left.shape[1]), left)
+    right, _ = jax.lax.scan(f, np.eye(right.shape[1]), right)
+    
+    left = linit @ left
+    right = right @ rinit
+    
+    pred = jnp.tensordot(left, tn['center'], [0,1])
+    pred = jnp.tensordot(pred, right, [1, 0])
     return pred
   
 evaluate_batched = jax.jit(jax.vmap(evaluate, in_axes=(None, 0), out_axes=0))
@@ -51,10 +57,12 @@ def init(L: int, chi: int) -> TN:
         w = jnp.stack(d * L * [jnp.eye(chi)])
         w = w.reshape((L, d, chi, chi))
         return w + np.random.normal(0, 1.e-2, size=w.shape)
-    
-    tn["left"] = _init_subnetwork(L//2, 2)
-    tn["right"] = _init_subnetwork(L-L//2, 2)
+
+    tn['left_boundary'] = _init_subnetwork(1, 2)[0,:,:,0]
+    tn["left"] = _init_subnetwork(L//2-1, 2)
     tn["center"] = _init_subnetwork(1, 10)[0] # this is num labels
+    tn["right"] = _init_subnetwork(L-L//2-1, 2)
+    tn['right_boundary'] = _init_subnetwork(1, 2)[0,:,0,:]
 
     return tn
 
@@ -90,8 +98,9 @@ def main():
 
     opt_state = opt.init(tn)
     losses = []
-    attr = ["raw","gpu","mnist","tn_center","uncompressed", f"chi{chi}", f"{shape[0]}x{shape[1]}"]
-    dt = DataTracker(attr)
+    attr = ["raw", "gpu", "mnist", "product", f"{shape[0]}x{shape[1]}"]
+    prepend = f"chi{chi}"
+    dt = DataTracker(attr, prepend=prepend)
 
     test_accuracy = accuracy(tn, process(next(test_eval)))
     train_accuracy = accuracy(tn, process(next(train_eval)))
@@ -120,3 +129,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
