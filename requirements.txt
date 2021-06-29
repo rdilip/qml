@@ -1,0 +1,10 @@
+tensorflow==2.3.1
+progress==1.5
+absl_py==0.11.0
+jax==0.2.13
+tensorflow_datasets==4.0.1
+numpy==1.20.2
+dm_haiku==0.0.5.dev0
+optax==0.0.6
+absl==0.0
+haiku==0.01
