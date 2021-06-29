@@ -5,10 +5,11 @@ import pickle
 class DataTracker:
     def __init__(self, attr, prepend=""):
         self.fpath = "/".join(attr)
-        if prepend:
-            self.fpath += "/" + prepend + "_"
         if not os.path.exists(self.fpath):
             os.makedirs(self.fpath)
+        if prepend:
+            self.fpath += "/" + prepend + "_"
+
 
         self.tracked_params = {}
         self.param_data = {}

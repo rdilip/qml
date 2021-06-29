@@ -17,9 +17,10 @@ def load_dataset(
         *,
         is_training: bool,
         batch_size: int,
+        dataset_name: str="mnist:3.*.*",
         labels: Tuple[int, int]=None
         ) -> Generator[Batch, None, None]:
-    ds = tfds.load("mnist:3.*.*", split=split).cache().repeat()
+    ds = tfds.load(dataset_name, split=split).cache().repeat()
     if labels is not None:
         ds = ds.filter(lambda fd: tf.logical_or(fd['label'] == labels[0], fd['label'] == labels[1]))
     if is_training:
@@ -55,8 +56,8 @@ def process_img(batch: Batch,
         x = x.reshape((nb, L))
         img = [pad_to_umps(to_mps(v, chi_max=chi)) for v in x]
         img = jnp.array(img)
-        mode = compress_kwargs.getdefault("mode", None)
-        qa = compress_kwargs.getdefault("add_qubits", 0)
+        mode = compress_kwargs.setdefault("mode", None)
+        qa = compress_kwargs.setdefault("add_qubits", 0)
         nb, L, d, chi, _ = img.shape
 
         if mode == "interleave":
