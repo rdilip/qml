@@ -11,7 +11,7 @@ import numpy as np
 import os
 
 import torch
-from torch.utils import data
+from torch.utils.data import DataLoader, Dataset
 from torchvision.datasets import MNIST, FashionMNIST
 from torchvision.transforms import Resize, Compose, ToTensor
 
@@ -30,7 +30,7 @@ def numpy_collate(batch):
     else:
         return np.array(batch)
 
-class NumpyLoader(data.DataLoader):
+class NumpyLoader(DataLoader):
     def __init__(self, dataset, batch_size=1,
                 shuffle=False, sampler=None,
                 batch_sampler=None, num_workers=0,
@@ -101,8 +101,10 @@ class Cast(object):
         # return jnp.array(img, dtype=jnp.float32)
 
 class Channel(object):
-    def __call__(self, img, method="diff"):
-        if method == "diff":
+    def __init__(self, method):
+        self.method = method
+    def __call__(self, img):
+        if self.method == "diff":
             return torch.cat((1-img, img), 0)
 
 class ToMPS(object):
@@ -164,10 +166,16 @@ def cache_transformed_dataset(
         kernel: str="diff"):
     if patch_dim is None:
         patch_dim = resize
-    fname = dataset_fname(resize, chi_max, patch_dim, kernel)
+    fname = dataset_fname(resize=resize,
+            chi_max=chi_max, 
+            patch_dim=patch_dim,
+            kernel=kernel)
     dirname = f"{fpath}/{dataset_name}/"
     if not os.path.exists(dirname):
         os.makedirs(dirname)
+
+    if os.path.exists(f"{dirname}/train_data_{fname}.pt"):
+        return
 
     transforms = Compose([
         Resize(resize),
@@ -201,20 +209,11 @@ def load_training_set(
         fpath: str="processed_datasets/",
         chi_max: int=1,
         patch_dim: tuple=None,
-        kernel: str="diff"):
-        ) -> NumpyLoader:
-            self,
-            *,
-            dataset_name,
-            resize,
-            chi_max,
-            patch_dim,
-            fpath,
-            train=True
+        kernel: str="diff") -> NumpyLoader:
     dataset = MPSCompressed(
                 dataset_name=dataset_name,
                 resize=resize,
-                chi_max=chi_max
+                chi_max=chi_max,
                 patch_dim=patch_dim,
                 fpath=fpath,
                 kernel=kernel,
@@ -236,11 +235,11 @@ def load_eval_set(
         kernel: str="diff"
         ) -> NumpyLoader:
     for train in [True, False]:
-    datasets.append(
+        datasets.append(
             MPSCompressed(
                 dataset_name=dataset_name,
                 resize=resize,
-                chi_max=chi_max
+                chi_max=chi_max,
                 patch_dim=patch_dim,
                 fpath=fpath,
                 kernel=kernel,

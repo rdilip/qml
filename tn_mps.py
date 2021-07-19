@@ -67,7 +67,7 @@ def accuracy(tn: TN, batch: Batch) -> jnp.ndarray:
     predictions = evaluate_batched(tn, batch[0])
     return jnp.mean(jnp.argmax(predictions, axis=-1) == batch[1])
 
-def main():
+def main(pd, chi_tn, chi_img):
     opt = optax.adam(1.e-4) # High rate for fudged contraction -- will fix.
 
     @jax.jit
@@ -80,18 +80,16 @@ def main():
         return tn, opt_state
 
     shape = (32,32)
-    L = shape[0]*shape[1]
-    chi = 8
-    tn = init(L, chi)
-    pd = (1,1)
-    chi_img=1
+    L = int(np.prod(pd) * (np.ceil(np.log2(np.prod(shape) / np.prod(pd))) + 1))
+    tn = init(L, chi_tn)
     batch_size = 50
     Nepochs = 100
 
+    cache_transformed_dataset(resize=shape, chi_max=chi_img, patch_dim=pd)
 
     training_generator = load_training_set(batch_size=batch_size,
                               resize=shape, patch_dim=pd, chi_max=chi_img)
-    train_eval, test_eval = load_eval_set(batch_size=100, resize=shape, patch_dim=pd, chi_max=chi_img)
+    train_eval, test_eval = load_eval_set(batch_size=1000, resize=shape, patch_dim=pd, chi_max=chi_img)
     train_eval, test_eval = cycle(train_eval), cycle(test_eval)
 
     opt_state = opt.init(tn)
@@ -126,5 +124,5 @@ def main():
     dt.save()
 
 if __name__ == '__main__':
-    main()
+    main((1,1), 8, 1)
 
