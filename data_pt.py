@@ -8,6 +8,7 @@ from typing import Generator, Tuple, Mapping, Callable
 import jax
 import jax.numpy as jnp
 import numpy as np
+import os
 
 import torch
 from torch.utils import data
@@ -19,6 +20,7 @@ import numpy as np
 
 dataset_fns = dict(mnist=MNIST, fashion_mnist=FashionMNIST)
 
+# Dataloaders / datasets
 def numpy_collate(batch):
     if isinstance(batch[0], np.ndarray):
         return np.stack(batch)
@@ -46,11 +48,40 @@ class NumpyLoader(data.DataLoader):
             timeout=timeout,
             worker_init_fn=worker_init_fn)
 
+class MPSCompressed(Dataset):
+    def __init__(
+            self,
+            *,
+            dataset_name,
+            resize,
+            chi_max,
+            patch_dim,
+            fpath,
+            kernel,
+            train=True
+            ):
+        fname = dataset_fname(
+                resize=resize,
+                chi_max=chi_max, 
+                patch_dim=patch_dim,
+                kernel=kernel)
+        
+        prepend = "train" if train else "test"
+        self.data = torch.load(f"{fpath}/{dataset_name}/{prepend}_data_{fname}.pt")
+        self.targets = torch.load(f"{fpath}/{dataset_name}/{prepend}_targets_{fname}.pt")
+
+    def __len__(self):
+        return self.data.shape[0]
+
+    def __getitem__(self, i):
+        return self.data[i], self.targets[i]
+
+# Transforms 
+
 class Flatten(object):
     def __call__(self, img):
         img = np.reshape(img, (*img.shape[:-2], np.prod(img.shape[-2:])))
         return np.array(img).T
-
 
 class SplitPatches(object):
     def __init__(self, ds):
@@ -70,8 +101,9 @@ class Cast(object):
         # return jnp.array(img, dtype=jnp.float32)
 
 class Channel(object):
-    def __call__(self, img):
-        return torch.cat((1-img, img), 0)
+    def __call__(self, img, method="diff"):
+        if method == "diff":
+            return torch.cat((1-img, img), 0)
 
 class ToMPS(object):
     def __init__(self, chi_max):
@@ -110,41 +142,88 @@ class ToTrivialMPS(object):
         Npx, Nc = vector.shape
         return vector.reshape((Npx, Nc, 1, 1))
 
+# Caching 
+def dataset_fname(
+        *,
+        resize: tuple=(32,32), 
+        chi_max: int=1, 
+        patch_dim:tuple=None,
+        kernel: str="diff"):
+    if patch_dim is None:
+        patch_dim = resize
+    return f"size{resize[0]}x{resize[1]}_pd{patch_dim[0]}x"\
+                "{patch_dim[1]}_chi{chi_max}_kernel_{kernel}.pt"
+
+def cache_transformed_dataset(
+        dataset_name: str="mnist",
+        *,
+        resize: tuple=(32,32),
+        fpath: str="processed_datasets/",
+        chi_max: int=1,
+        patch_dim: tuple=None,
+        kernel: str="diff"):
+    if patch_dim is None:
+        patch_dim = resize
+    fname = dataset_fname(resize, chi_max, patch_dim, kernel)
+    dirname = f"{fpath}/{dataset_name}/"
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+
+    transforms = Compose([
+        Resize(resize),
+        ToTensor(),
+        Channel(method=kernel),
+        SplitPatches(patch_dim),
+        Flatten(),
+        ToMPS(chi_max)
+        ])
+
+    train_dataset = dataset_fns[dataset_name](
+            '/tmp/mnist/', download=True, transform=transforms, train=True)
+    test_dataset = dataset_fns[dataset_name](
+            '/tmp/mnist/', download=True, transform=transforms, train=False)
+
+    train_dl = NumpyLoader(train_dataset, batch_size=len(train_dataset.data))
+    test_dl = NumpyLoader(train_dataset, batch_size=len(train_dataset.data))
+
+    train_img, train_targets = next(iter(train_dl))
+    test_img, test_targets = next(iter(test_dl))
+
+    torch.save(train_img, f"{dirname}/train_data_{fname}.pt")
+    torch.save(train_targets, f"{dirname}/train_targets_{fname}.pt")
+    torch.save(test_img, f"{dirname}/test_data_{fname}.pt")
+    torch.save(test_targets, f"{dirname}/test_targets_{fname}.pt")
 
 def load_training_set(
         dataset_name: str="mnist",
         *,
-        batch_size: int,
-        resize: tuple,
-        chi_max: int=None,
-        patch_dim: tuple=None
+        resize: tuple=(32,32),
+        fpath: str="processed_datasets/",
+        chi_max: int=1,
+        patch_dim: tuple=None,
+        kernel: str="diff"):
         ) -> NumpyLoader:
-    DatasetFn = dataset_fns[dataset_name]
-    mode = "fast"
-    if mode == "fast":
-        dataset = DatasetFn(f'/tmp/{dataset_name}/',
-                        download=True,
-                        transform=Compose([Resize(resize),
-                                           ToTensor(),
-                                           Channel(), 
-                                           Flatten(),
-                                           ToTrivialMPS()
-                                           ]))
-    else:
-        dataset = DatasetFn(f'/tmp/{dataset_name}/',
-                        download=True,
-                        transform=Compose([Resize(resize),
-                                           ToTensor(),
-                                           Channel(), 
-                                           SplitPatches(patch_dim),
-                                           Flatten(),
-                                           ToMPS(chi_max)
-                                           ]))
+            self,
+            *,
+            dataset_name,
+            resize,
+            chi_max,
+            patch_dim,
+            fpath,
+            train=True
+    dataset = MPSCompressed(
+                dataset_name=dataset_name,
+                resize=resize,
+                chi_max=chi_max
+                patch_dim=patch_dim,
+                fpath=fpath,
+                kernel=kernel,
+                train=True)
 
     data_generator = NumpyLoader(dataset, 
                                  batch_size=batch_size,
                                  shuffle=True,
-                                 num_workers=2)
+                                 num_workers=1)
     return data_generator
 
 def load_eval_set(
@@ -152,36 +231,24 @@ def load_eval_set(
         *,
         batch_size: int,
         resize: tuple,
-        chi_max: int=None,
+        chi_max: int=1,
         patch_dim: tuple=None,
+        kernel: str="diff"
         ) -> NumpyLoader:
-    DatasetFn = dataset_fns[dataset_name]
-    transform = Compose([Resize(resize),
-                   ToTensor(),
-                   Channel(),
-                   SplitPatches(patch_dim),
-                   Flatten(),
-                   ToMPS(chi_max),
-                   ])
-    transform = Compose([Resize(resize),
-                   ToTensor(),
-                   Channel(),
-                   Flatten(),
-                   ToTrivialMPS(),
-                   ])
+    for train in [True, False]:
+    datasets.append(
+            MPSCompressed(
+                dataset_name=dataset_name,
+                resize=resize,
+                chi_max=chi_max
+                patch_dim=patch_dim,
+                fpath=fpath,
+                kernel=kernel,
+                train=train)
+            )
 
-
-    dataset = DatasetFn(f'/tmp/{dataset_name}/',
-                        download=True,
-                        transform=transform,
-                        train=True)
-    train_eval = NumpyLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
-    dataset = DatasetFn(f'/tmp/{dataset_name}/',
-                        download=True,
-                        transform=transform,
-                        train=False)
-    test_eval = NumpyLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
-    return train_eval, test_eval
-
-
-
+    data_generators = [NumpyLoader(dataset, 
+                                 batch_size=batch_size,
+                                 shuffle=False,
+                                 num_workers=1) for dataset in datasets]
+    return tuple(data_generators)
