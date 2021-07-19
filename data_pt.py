@@ -62,18 +62,12 @@ class SplitPatches(object):
         img_split = torch.Tensor(img).unfold(1,px,px).unfold(2,py,py)
         return np.array(img_split.reshape(C, -1, px, py), dtype=float).transpose((1,0,2,3))
 
-class SplitAndFlatten(object):
-    def __init__(self, dim_split):
-        self.ds = dim_split
-
 class Cast(object):
     def __call__(self, img):
         return torch.Tensor(img)
         # return jnp.array(img, dtype=jnp.float32)
 
 class Channel(object):
-    # TODO: Fourier, x, 1-x, etc.
-    # TODO: WE NEED THE CHANNELS: IT MAKES NO SENSE IN THE LIMIT WITHOUT IT
     def __call__(self, img):
         return torch.cat((1-img, img), 0)
 
@@ -94,7 +88,6 @@ class ToMPS(object):
         batched_vector = np.pad(batched_vector, ((0,0),(0,dim-Npx*Nc)))
         batched_vector = batched_vector.reshape((alpha,*[2]*L))
         batched_mps = np.zeros((alpha, L, 2, self.chi, self.chi))
-
         for a in range(alpha):
             vector = batched_vector[a]
             mps = []
@@ -108,7 +101,7 @@ class ToMPS(object):
                 chiL = vector.shape[0]
             mps.append(self.pad_fn(vector.reshape((chiL,2,1)).transpose((1,0,2))))
             batched_mps[a] = mps
-        return np.array(batched_mps)
+        return np.array(batched_mps).reshape((alpha*L, 2, self.chi, self.chi))
 
 
 def load_training_set(

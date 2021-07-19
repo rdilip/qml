@@ -4,6 +4,7 @@ from typing import Generator, Tuple, Mapping, Callable
 import jax
 import jax.numpy as jnp
 import numpy as np
+
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -27,7 +28,6 @@ def load_dataset(
         ds = ds.shuffle(10*batch_size, seed=0)
     ds = ds.batch(batch_size)
     return iter(tfds.as_numpy(ds))
-
 
 def process_img(batch: Batch,
                 resize: Tuple,
