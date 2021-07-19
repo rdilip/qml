@@ -48,7 +48,9 @@ class NumpyLoader(data.DataLoader):
 
 class Flatten(object):
     def __call__(self, img):
-        return np.reshape(img, (*img.shape[:-2], np.prod(img.shape[-2:])))
+        img = np.reshape(img, (*img.shape[:-2], np.prod(img.shape[-2:])))
+        return np.array(img).T
+
 
 class SplitPatches(object):
     def __init__(self, ds):
@@ -103,17 +105,33 @@ class ToMPS(object):
             batched_mps[a] = mps
         return np.array(batched_mps).reshape((alpha*L, 2, self.chi, self.chi))
 
+class ToTrivialMPS(object):
+    def __call__(self, vector):
+        Npx, Nc = vector.shape
+        return vector.reshape((Npx, Nc, 1, 1))
+
 
 def load_training_set(
         dataset_name: str="mnist",
         *,
         batch_size: int,
         resize: tuple,
-        chi_max: int,
-        patch_dim: tuple
+        chi_max: int=None,
+        patch_dim: tuple=None
         ) -> NumpyLoader:
     DatasetFn = dataset_fns[dataset_name]
-    dataset = DatasetFn(f'/tmp/{dataset_name}/',
+    mode = "fast"
+    if mode == "fast":
+        dataset = DatasetFn(f'/tmp/{dataset_name}/',
+                        download=True,
+                        transform=Compose([Resize(resize),
+                                           ToTensor(),
+                                           Channel(), 
+                                           Flatten(),
+                                           ToTrivialMPS()
+                                           ]))
+    else:
+        dataset = DatasetFn(f'/tmp/{dataset_name}/',
                         download=True,
                         transform=Compose([Resize(resize),
                                            ToTensor(),
@@ -122,10 +140,11 @@ def load_training_set(
                                            Flatten(),
                                            ToMPS(chi_max)
                                            ]))
+
     data_generator = NumpyLoader(dataset, 
                                  batch_size=batch_size,
                                  shuffle=True,
-                                 num_workers=0)
+                                 num_workers=2)
     return data_generator
 
 def load_eval_set(
@@ -133,8 +152,8 @@ def load_eval_set(
         *,
         batch_size: int,
         resize: tuple,
-        chi_max: int,
-        patch_dim: tuple,
+        chi_max: int=None,
+        patch_dim: tuple=None,
         ) -> NumpyLoader:
     DatasetFn = dataset_fns[dataset_name]
     transform = Compose([Resize(resize),
@@ -142,8 +161,15 @@ def load_eval_set(
                    Channel(),
                    SplitPatches(patch_dim),
                    Flatten(),
-                   ToMPS(chi_max)
+                   ToMPS(chi_max),
                    ])
+    transform = Compose([Resize(resize),
+                   ToTensor(),
+                   Channel(),
+                   Flatten(),
+                   ToTrivialMPS(),
+                   ])
+
 
     dataset = DatasetFn(f'/tmp/{dataset_name}/',
                         download=True,
