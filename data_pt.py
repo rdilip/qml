@@ -205,6 +205,7 @@ def cache_transformed_dataset(
 def load_training_set(
         dataset_name: str="mnist",
         *,
+        batch_size: int,
         resize: tuple=(32,32),
         fpath: str="processed_datasets/",
         chi_max: int=1,
@@ -229,7 +230,8 @@ def load_eval_set(
         dataset_name: str="mnist",
         *,
         batch_size: int,
-        resize: tuple,
+        resize: tuple=(32,32),
+        fpath=str:"processed_datasets/",
         chi_max: int=1,
         patch_dim: tuple=None,
         kernel: str="diff"
