@@ -192,7 +192,7 @@ def cache_transformed_dataset(
             '/tmp/mnist/', download=True, transform=transforms, train=False)
 
     train_dl = NumpyLoader(train_dataset, batch_size=len(train_dataset.data))
-    test_dl = NumpyLoader(train_dataset, batch_size=len(train_dataset.data))
+    test_dl = NumpyLoader(test_dataset, batch_size=len(test_dataset.data))
 
     train_img, train_targets = next(iter(train_dl))
     test_img, test_targets = next(iter(test_dl))
