@@ -153,8 +153,8 @@ def dataset_fname(
         kernel: str="diff"):
     if patch_dim is None:
         patch_dim = resize
-    return f"size{resize[0]}x{resize[1]}_pd{patch_dim[0]}x"\
-                "{patch_dim[1]}_chi{chi_max}_kernel_{kernel}.pt"
+    return f"size_{resize[0]}x{resize[1]}_patch_{patch_dim[0]}x"\
+                f"{patch_dim[1]}_chi{chi_max}_kernel_{kernel}"
 
 def cache_transformed_dataset(
         dataset_name: str="mnist",
@@ -197,10 +197,10 @@ def cache_transformed_dataset(
     train_img, train_targets = next(iter(train_dl))
     test_img, test_targets = next(iter(test_dl))
 
-    torch.save(train_img, f"{dirname}/train_data_{fname}.pt")
-    torch.save(train_targets, f"{dirname}/train_targets_{fname}.pt")
-    torch.save(test_img, f"{dirname}/test_data_{fname}.pt")
-    torch.save(test_targets, f"{dirname}/test_targets_{fname}.pt")
+    torch.save(train_img, f"{dirname}/train_data_{fname}")
+    torch.save(train_targets, f"{dirname}/train_targets_{fname}")
+    torch.save(test_img, f"{dirname}/test_data_{fname}")
+    torch.save(test_targets, f"{dirname}/test_targets_{fname}")
 
 def load_training_set(
         dataset_name: str="mnist",
@@ -231,11 +231,13 @@ def load_eval_set(
         *,
         batch_size: int,
         resize: tuple=(32,32),
-        fpath=str:"processed_datasets/",
+        fpath:str="processed_datasets/",
         chi_max: int=1,
         patch_dim: tuple=None,
         kernel: str="diff"
         ) -> NumpyLoader:
+    datasets = []
+
     for train in [True, False]:
         datasets.append(
             MPSCompressed(

@@ -80,11 +80,11 @@ def main(pd, chi_tn, chi_img):
         return tn, opt_state
 
     shape = (32,32)
-    L = int(np.prod(pd) * (np.ceil(np.log2(np.prod(shape) / np.prod(pd))) + 1))
+    Npatches = int(np.prod(shape) / np.prod(pd))
+    L = Npatches * int(np.ceil(np.log2(np.prod(pd))) + 1)
     tn = init(L, chi_tn)
     batch_size = 50
     Nepochs = 100
-
     cache_transformed_dataset(resize=shape, chi_max=chi_img, patch_dim=pd)
 
     training_generator = load_training_set(batch_size=batch_size,
@@ -94,8 +94,9 @@ def main(pd, chi_tn, chi_img):
 
     opt_state = opt.init(tn)
     losses = []
-    attr = ["raw", "gpu", "mnist", "product", f"{shape[0]}x{shape[1]}"]
-    prepend = f"chi{chi}"
+    attr = ["raw", "cpu", "mnist", f"size_{shape[0]}x{shape[1]}", f"patch_{pd[0]}x{pd[1]}",\
+                f"chi_img{chi_img}"]
+    prepend = f"chi{chi_tn}"
     dt = DataTracker(attr, prepend=prepend)
 
     test_accuracy = accuracy(tn, next(test_eval))
@@ -123,6 +124,4 @@ def main(pd, chi_tn, chi_img):
         dt.update(save_interval=1)
     dt.save()
 
-if __name__ == '__main__':
-    main((1,1), 8, 1)
 
