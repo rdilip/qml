@@ -174,7 +174,14 @@ def cache_transformed_dataset(
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
-    if os.path.exists(f"{dirname}/train_data_{fname}.pt"):
+    # check if ALL files exist
+    # train_data, train_targets, test_data, test_targets
+    prepends = ["train_data", "train_targets", "test_data", "test_targets"]
+    already_cached = True
+    for prepend in prepends:
+        if not os.path.exists(f"{dirname}/{prepend}_{fname}.pt"):
+            already_cached = False
+    if already_cached:
         return
 
     transforms = Compose([
