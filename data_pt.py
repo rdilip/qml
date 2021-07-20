@@ -197,10 +197,10 @@ def cache_transformed_dataset(
     train_img, train_targets = next(iter(train_dl))
     test_img, test_targets = next(iter(test_dl))
 
-    torch.save(train_img, f"{dirname}/train_data_{fname}")
-    torch.save(train_targets, f"{dirname}/train_targets_{fname}")
-    torch.save(test_img, f"{dirname}/test_data_{fname}")
-    torch.save(test_targets, f"{dirname}/test_targets_{fname}")
+    torch.save(train_img, f"{dirname}/train_data_{fname}.pt")
+    torch.save(train_targets, f"{dirname}/train_targets_{fname}.pt")
+    torch.save(test_img, f"{dirname}/test_data_{fname}.pt")
+    torch.save(test_targets, f"{dirname}/test_targets_{fname}.pt")
 
 def load_training_set(
         dataset_name: str="mnist",

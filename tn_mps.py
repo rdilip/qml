@@ -34,7 +34,7 @@ def evaluate(tn, img):
     center, _ = jax.lax.scan(_reduce_mps, start, center)
 
     pred = jnp.tensordot(tn['right'], img[-1], [0,0]).transpose((0,2,1,3))
-    pred = _reduce_mps(center, pred)[0].ravel()
+    pred = _reduce_mps(center, pred)[0][0,0,:,0].ravel()
     return pred
   
 evaluate_batched = jax.jit(jax.vmap(evaluate, in_axes=(None, 0), out_axes=0))
@@ -43,7 +43,6 @@ evaluate_batched = jax.jit(jax.vmap(evaluate, in_axes=(None, 0), out_axes=0))
 def loss(tn: TN, batch: Batch) -> jnp.ndarray:
     logits = evaluate_batched(tn, batch[0])
     labels = jax.nn.one_hot(batch[1], 10)
-    
     softmax_xent = -jnp.sum(labels * jax.nn.log_softmax(logits))
     softmax_xent /= labels.shape[0]
     
@@ -84,7 +83,7 @@ def main(pd, chi_tn, chi_img):
     L = Npatches * int(np.ceil(np.log2(np.prod(pd))) + 1)
     tn = init(L, chi_tn)
     batch_size = 50
-    Nepochs = 100
+    Nepochs = 300
     cache_transformed_dataset(resize=shape, chi_max=chi_img, patch_dim=pd)
 
     training_generator = load_training_set(batch_size=batch_size,
