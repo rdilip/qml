@@ -164,6 +164,75 @@ def cache_transformed_dataset(
         chi_max: int=1,
         patch_dim: tuple=None,
         kernel: str="diff"):
+    needs_cleanup = _cache_transformed_dataset(
+                dataset_name,
+                resize=resize,
+                fpath=fpath,
+                chi_max=chi_max,
+                patch_dim=patch_dim,
+                kernel=kernel)
+    if needs_cleanup:
+        _collect_and_cleanup(
+                dataset_name,
+                resize=resize,
+                fpath=fpath,
+                chi_max=chi_max,
+                patch_dim=patch_dim,
+                kernel=kernel)
+
+def _collect_and_cleanup(
+        dataset_name: str="mnist",
+        *,
+        resize: tuple=(32,32),
+        fpath: str="processed_datasets/",
+        chi_max: int=1,
+        patch_dim: tuple=None,
+        kernel: str="diff",
+        Nbatches: int=10):
+    testx, testy = [], []
+    trainx, trainy = [], []
+
+    fname = dataset_fname(resize=resize,
+            chi_max=chi_max, 
+            patch_dim=patch_dim,
+            kernel=kernel)
+    dirname = f"{fpath}/{dataset_name}/"
+
+
+    for i in range(Nbatches):
+        trainx.append(torch.load(f"{dirname}/train_data{i}_{fname}.pt"))
+        trainy.append(torch.load(f"{dirname}/train_targets{i}_{fname}.pt"))
+        testx.append(torch.load(f"{dirname}/test_data{i}_{fname}.pt"))
+        testy.append(torch.load(f"{dirname}/test_targets{i}_{fname}.pt"))
+
+        #os.remove(f"{dirname}/train_data{i}_{fname}.pt")
+        #os.remove(f"{dirname}/train_targets{i}_{fname}.pt")
+        #os.remove(f"{dirname}/test_data{i}_{fname}.pt")
+        #os.remove(f"{dirname}/test_targets{i}_{fname}.pt")
+
+    testx = np.concatenate(testx, axis=0)
+    testy = np.concatenate(testy, axis=0)
+    trainx = np.concatenate(trainx, axis=0)
+    trainy = np.concatenate(trainy, axis=0)
+
+    # TODO  This only reaches here if those files exist...but even so we should
+    # have more error checking
+
+    torch.save(trainx, f"{dirname}/train_data_{fname}.pt")
+    torch.save(trainy, f"{dirname}/train_targets_{fname}.pt")
+    torch.save(testx, f"{dirname}/test_data_{fname}.pt")
+    torch.save(testy, f"{dirname}/test_targets_{fname}.pt")
+
+
+def _cache_transformed_dataset(
+        dataset_name: str="mnist",
+        *,
+        resize: tuple=(32,32),
+        fpath: str="processed_datasets/",
+        chi_max: int=1,
+        patch_dim: tuple=None,
+        kernel: str="diff",
+        Nbatches: int=10):
     if patch_dim is None:
         patch_dim = resize
     fname = dataset_fname(resize=resize,
@@ -182,7 +251,7 @@ def cache_transformed_dataset(
         if not os.path.exists(f"{dirname}/{prepend}_{fname}.pt"):
             already_cached = False
     if already_cached:
-        return
+        return False
 
     transforms = Compose([
         Resize(resize),
@@ -198,16 +267,24 @@ def cache_transformed_dataset(
     test_dataset = dataset_fns[dataset_name](
             '/tmp/mnist/', download=True, transform=transforms, train=False)
 
-    train_dl = NumpyLoader(train_dataset, batch_size=len(train_dataset.data))
-    test_dl = NumpyLoader(test_dataset, batch_size=len(test_dataset.data))
+    Ntrain, Ntest = len(train_dataset.data), len(test_dataset.data)
 
-    train_img, train_targets = next(iter(train_dl))
-    test_img, test_targets = next(iter(test_dl))
+    train_dl = NumpyLoader(train_dataset, batch_size=Ntrain//Nbatches)
+    test_dl = NumpyLoader(test_dataset, batch_size=Ntest//Nbatches)
 
-    torch.save(train_img, f"{dirname}/train_data_{fname}.pt")
-    torch.save(train_targets, f"{dirname}/train_targets_{fname}.pt")
-    torch.save(test_img, f"{dirname}/test_data_{fname}.pt")
-    torch.save(test_targets, f"{dirname}/test_targets_{fname}.pt")
+    del train_dataset
+    del test_dataset
+
+    for i in range(Nbatches):
+        print(f"Cached {i} of {Nbatches}")
+        train_img, train_targets = next(iter(train_dl))
+        test_img, test_targets = next(iter(test_dl))
+
+        torch.save(train_img, f"{dirname}/train_data{i}_{fname}.pt")
+        torch.save(train_targets, f"{dirname}/train_targets{i}_{fname}.pt")
+        torch.save(test_img, f"{dirname}/test_data{i}_{fname}.pt")
+        torch.save(test_targets, f"{dirname}/test_targets{i}_{fname}.pt")
+    return True
 
 def load_training_set(
         dataset_name: str="mnist",

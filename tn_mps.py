@@ -66,8 +66,8 @@ def accuracy(tn: TN, batch: Batch) -> jnp.ndarray:
     predictions = evaluate_batched(tn, batch[0])
     return jnp.mean(jnp.argmax(predictions, axis=-1) == batch[1])
 
-def main(pd, chi_tn, chi_img):
-    opt = optax.adam(1.e-4) # High rate for fudged contraction -- will fix.
+def main(pd, chi_tn, chi_img, lr=1.e-4):
+    opt = optax.adam(lr) 
 
     @jax.jit
     def update(tn: TN,
@@ -96,6 +96,9 @@ def main(pd, chi_tn, chi_img):
     attr = ["raw", "cpu", "mnist", f"size_{shape[0]}x{shape[1]}", f"patch_{pd[0]}x{pd[1]}",\
                 f"chi_img{chi_img}"]
     prepend = f"chi{chi_tn}"
+    if lr != 1.e-4:
+        prepend = f"chi{chi_tn}_lr{lr}"
+
     dt = DataTracker(attr, prepend=prepend)
 
     test_accuracy = accuracy(tn, next(test_eval))
@@ -107,6 +110,7 @@ def main(pd, chi_tn, chi_img):
     dt.register("train_accuracy", lambda: train_accuracy)
     dt.register("test_accuracy", lambda: test_accuracy)
     dt.register("time_elapsed", lambda: time.time() - start)
+    dt.register("model", lambda: tn)
 
     for epoch in range(Nepochs):
         bar = Bar(f"[Epoch {epoch+1}/{Nepochs}]", max=60000//batch_size)
