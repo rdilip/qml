@@ -106,6 +106,8 @@ def main(pd, chi_tn, chi_img, lr=1.e-4):
     train_accuracy, test_accuracy = jax.device_get((train_accuracy, test_accuracy))
     start = time.time()
 
+    print("Starting loss: " + str(loss(tn, next(test_eval))))
+
     dt.register("loss", lambda: loss(tn, next(test_eval)))
     dt.register("train_accuracy", lambda: train_accuracy)
     dt.register("test_accuracy", lambda: test_accuracy)

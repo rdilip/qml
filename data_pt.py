@@ -48,6 +48,7 @@ class NumpyLoader(DataLoader):
             timeout=timeout,
             worker_init_fn=worker_init_fn)
 
+
 class MPSCompressed(Dataset):
     def __init__(
             self,
@@ -76,6 +77,15 @@ class MPSCompressed(Dataset):
     def __getitem__(self, i):
         return self.data[i], self.targets[i]
 
+
+def mps_norm(mps):
+    L = len(mps)
+    out = mps[0]
+    lenv = np.tensordot(mps[0], mps[0].conj(), [0,0]).transpose((0,2,1,3))
+    for i in range(1, L):
+        tnsr = np.tensordot(mps[i], mps[i].conj(), [0,0]).transpose((0,2,1,3))
+        lenv = np.tensordot(lenv, tnsr, [[2,3],[0,1]])
+    return np.sqrt(lenv[0,0,0,0])
 # Transforms 
 
 class Flatten(object):
@@ -107,6 +117,7 @@ class Channel(object):
         if self.method == "diff":
             return torch.cat((1-img, img), 0)
 
+
 class ToMPS(object):
     def __init__(self, chi_max):
         self.chi = chi_max
@@ -136,6 +147,7 @@ class ToMPS(object):
                 vector = (np.diag(s)@B).reshape((-1, 2**(L-i-1)))
                 chiL = vector.shape[0]
             mps.append(self.pad_fn(vector.reshape((chiL,2,1)).transpose((1,0,2))))
+            mps[0] /= mps_norm(mps)
             batched_mps[a] = mps
         return np.array(batched_mps).reshape((alpha*L, 2, self.chi, self.chi))
 
