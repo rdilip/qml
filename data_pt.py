@@ -20,6 +20,17 @@ import numpy as np
 
 dataset_fns = dict(mnist=MNIST, fashion_mnist=FashionMNIST)
 
+
+def check_param_saturation(img_size, pd, chi_img):
+    """ Checks whether the mps method actually does any compression """
+    Npatches = np.prod(img_size) / np.prod(pd)
+    Npx = 2 * np.prod(pd) # 2 channels
+    L = int(np.ceil(np.log2(Npx)))
+ 
+    chi_max = 2**(L//2)
+    print("chi_max: ", int(chi_max))
+    return chi_img <= chi_max
+
 # Dataloaders / datasets
 def numpy_collate(batch):
     if isinstance(batch[0], np.ndarray):
@@ -217,10 +228,6 @@ def _collect_and_cleanup(
         testx.append(torch.load(f"{dirname}/test_data{i}_{fname}.pt"))
         testy.append(torch.load(f"{dirname}/test_targets{i}_{fname}.pt"))
 
-        #os.remove(f"{dirname}/train_data{i}_{fname}.pt")
-        #os.remove(f"{dirname}/train_targets{i}_{fname}.pt")
-        #os.remove(f"{dirname}/test_data{i}_{fname}.pt")
-        #os.remove(f"{dirname}/test_targets{i}_{fname}.pt")
 
     testx = np.concatenate(testx, axis=0)
     testy = np.concatenate(testy, axis=0)
@@ -235,6 +242,11 @@ def _collect_and_cleanup(
     torch.save(testx, f"{dirname}/test_data_{fname}.pt")
     torch.save(testy, f"{dirname}/test_targets_{fname}.pt")
 
+    for i in range(Nbatches):
+        os.remove(f"{dirname}/train_data{i}_{fname}.pt")
+        os.remove(f"{dirname}/train_targets{i}_{fname}.pt")
+        os.remove(f"{dirname}/test_data{i}_{fname}.pt")
+        os.remove(f"{dirname}/test_targets{i}_{fname}.pt")
 
 def _cache_transformed_dataset(
         dataset_name: str="mnist",
