@@ -1,14 +1,34 @@
+""" DataTracker is a class to track and store temporal data, such as in neural
+network training. Standard usage is
+
+    >>> dt = DataTracker(attr, prepend=prepend)
+    >>> dt.register("observation", obs_func())
+    >>> for epoch in epochs:
+    >>>     dt.update()
+
+This will register an observation. The value of observation should be given by
+obs_func(), which is usually just lambda: obs_value. Each call to dt.update()
+will update and save the parameters.
+"""
+
 import os
 import numpy as np
 import pickle
 import warnings
 from math import log10, floor
 
-# TODO implement some kind of thing like parameters change and then we log
-# where in training they change.
-
 class DataTracker:
     def __init__(self, attr, prepend="", experimental=False, overwrite=False):
+        """ 
+        Args:
+            attr: list of attributes, each attribute generates a level in a 
+                nested directory for saving.
+            prepend: String to prepend onto saved files.
+            experimental: bool. If True, does not save anything.
+            overwrite: bool. If True, will overwrite existing data. If False,
+                loads and appends to existing data
+        """
+            
         self.exp = experimental
         self.overwrite = overwrite
         if self.exp:
@@ -25,6 +45,11 @@ class DataTracker:
         self.Niter = 0
 
     def register(self, label, param_func):
+        """
+        Args:
+            label: string, name of observation
+            param_func: Callable, returns current parameter.
+        """
         self.tracked_params[label] = param_func
         self.param_data[label] = [param_func()]
         if not self.overwrite:
@@ -39,6 +64,10 @@ class DataTracker:
         return self.param_data[label]
 
     def update(self, save_interval=1):
+        """
+        Args:
+            save_interval: Save every save_interval iterations.
+        """
         if self.exp:
             return
         for label, param_func in self.tracked_params.items():
@@ -48,6 +77,8 @@ class DataTracker:
             self.save()
 
     def save(self):
+        """ Expanded save function that tries numpy, otherwise goes to pkl.
+        """
         if self.exp:
             return
         for label, data in self.param_data.items():
@@ -58,6 +89,8 @@ class DataTracker:
                     pickle.dump(data, f)
 
 def load(fpath, label):
+    """ Expanded load function that tries numpy, otherwise goes to pkl.
+    """
     try:
         data = np.load(fpath + label + ".npy", allow_pickle=True)
     except FileNotFoundError:
