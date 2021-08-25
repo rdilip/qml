@@ -69,7 +69,11 @@ def accuracy(tn: TN, batch: Batch) -> jnp.ndarray:
     predictions = evaluate_batched(tn, batch[0])
     return jnp.mean(jnp.argmax(predictions, axis=-1) == batch[1])
 
-def main(pd, chi_tn, chi_img, lr=1.e-4, Nepochs=300, dataset="mnist"):
+def main(pd, chi_tn, chi_img, 
+            Nepochs=300, 
+            dataset="mnist",
+            batch_size=128,
+            eval_size=1000):
     opt = optax.adam(lr) 
 
     @jax.jit
@@ -101,14 +105,13 @@ def main(pd, chi_tn, chi_img, lr=1.e-4, Nepochs=300, dataset="mnist"):
 
     L = Npatches * int(np.ceil(np.log2(np.prod(pd))) + 1)
     tn = init(L, chi_tn)
-    batch_size = 128
     cache_transformed_dataset(dataset_name=dataset, resize=shape, chi_max=chi_img, patch_dim=pd)
 
     training_generator = load_training_set(dataset_name=dataset,
             batch_size=batch_size, resize=shape, patch_dim=pd, chi_max=chi_img)
     train_eval, test_eval = load_eval_set(
                                         dataset_name=dataset,
-                                        batch_size=1000,
+                                        batch_size=eval_size,
                                         resize=shape,
                                         patch_dim=pd,
                                         chi_max=chi_img)
