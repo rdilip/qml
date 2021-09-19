@@ -1,7 +1,8 @@
-""" Handles all data loading and preprocessing with PyTorch loaders.
-NOTE: need to rewrite the structure of io since we're using pytorch, not
-tf rn, but let's keep it backwards compatible.
-
+""" Handles all data loading and preprocessing with PyTorch loaders. The main
+contribution is the conversion of the images to a single tensor of batched
+matrix product states. This file also implements the caching protocols
+necessary to train at a reasonable pace, since converting a vector to an MPS
+is in general an expensive operation. 
 """
 
 from typing import Generator, Tuple, Mapping, Callable
@@ -15,11 +16,9 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision.datasets import MNIST, FashionMNIST
 from torchvision.transforms import Resize, Compose, ToTensor
 
-Batch = Mapping[str, np.ndarray]
 import numpy as np
 
 dataset_fns = dict(mnist=MNIST, fashion_mnist=FashionMNIST)
-
 
 def check_param_saturation(img_size, pd, chi_img):
     """ Checks whether the mps method actually does any compression """
@@ -33,6 +32,7 @@ def check_param_saturation(img_size, pd, chi_img):
 
 # Dataloaders / datasets
 def numpy_collate(batch):
+    """ Collate function for Numpy dataloader """
     if isinstance(batch[0], np.ndarray):
         return np.stack(batch)
     elif isinstance(batch[0], (tuple,list)):
@@ -61,6 +61,7 @@ class NumpyLoader(DataLoader):
 
 
 class MPSCompressed(Dataset):
+    """ Dataset in matrix product state form. """
     def __init__(
             self,
             *,
@@ -72,6 +73,18 @@ class MPSCompressed(Dataset):
             kernel,
             train=True
             ):
+        """
+        Args:
+            dataset_name: string, either mnist or fashion_mnist
+            resize: tuple of size to scale images to
+            chi_max: Bond dimension of images
+            patch_dim: Size of patches. If patch_dim=resize, then only logN 
+                qubits are used.
+            fpath: Location to save processed images.
+            kernel: String representing local Hilbert space function. One of
+                'diff' (Google), 'rot' (Stoudenmire), 'fourier'.
+            train: bool, train vs test set.
+        """
         fname = dataset_fname(
                 resize=resize,
                 chi_max=chi_max, 
@@ -97,7 +110,6 @@ def mps_norm(mps):
         tnsr = np.tensordot(mps[i], mps[i].conj(), [0,0]).transpose((0,2,1,3))
         lenv = np.tensordot(lenv, tnsr, [[2,3],[0,1]])
     return np.sqrt(lenv[0,0,0,0])
-# Transforms 
 
 class Flatten(object):
     def __call__(self, img):
@@ -127,7 +139,12 @@ class Channel(object):
     def __call__(self, img):
         if self.method == "diff":
             return torch.cat((1-img, img), 0)
-
+        elif self.method == "rot":
+            return torch.cat((np.cos(0.5*np.pi*img), np.sin(0.5*np.pi*img)), 0)
+        elif self.method == "fourier":
+            f = torch.fft.fft2(img)
+            f /= np.prod(img.shape[-2:])
+            return torch.cat((torch.real(f), torch.imag(f)), 0)
 
 class ToMPS(object):
     def __init__(self, chi_max):
@@ -158,7 +175,9 @@ class ToMPS(object):
                 vector = (np.diag(s)@B).reshape((-1, 2**(L-i-1)))
                 chiL = vector.shape[0]
             mps.append(self.pad_fn(vector.reshape((chiL,2,1)).transpose((1,0,2))))
-            mps[0] /= mps_norm(mps)
+            norm = mps_norm(mps)
+            if norm != 0.:
+                mps[0] /= norm
             batched_mps[a] = mps
         return np.array(batched_mps).reshape((alpha*L, 2, self.chi, self.chi))
 
@@ -241,6 +260,7 @@ def _collect_and_cleanup(
     torch.save(trainy, f"{dirname}/train_targets_{fname}.pt")
     torch.save(testx, f"{dirname}/test_data_{fname}.pt")
     torch.save(testy, f"{dirname}/test_targets_{fname}.pt")
+
 
     for i in range(Nbatches):
         os.remove(f"{dirname}/train_data{i}_{fname}.pt")

@@ -1,5 +1,4 @@
-""" TN learning using a simplified method of Google's paper. There is nontrivial bond
-dimension on the side wings which is dumb """
+""" TN learning using stochastic gradient descent. """
 
 import jax
 from jax.ops import index_update, index
@@ -73,8 +72,10 @@ def main(pd, chi_tn, chi_img,
             Nepochs=300, 
             dataset="mnist",
             batch_size=128,
-            eval_size=1000):
-    opt = optax.adam(lr) 
+            eval_size=1000,
+            kernel="diff"):
+
+    opt = optax.adam(1.e-4) 
 
     @jax.jit
     def update(tn: TN,
@@ -105,27 +106,26 @@ def main(pd, chi_tn, chi_img,
 
     L = Npatches * int(np.ceil(np.log2(np.prod(pd))) + 1)
     tn = init(L, chi_tn)
-    cache_transformed_dataset(dataset_name=dataset, resize=shape, chi_max=chi_img, patch_dim=pd)
+    cache_transformed_dataset(dataset_name=dataset, resize=shape, chi_max=chi_img, patch_dim=pd, kernel=kernel)
 
     training_generator = load_training_set(dataset_name=dataset,
-            batch_size=batch_size, resize=shape, patch_dim=pd, chi_max=chi_img)
+            batch_size=batch_size, resize=shape, patch_dim=pd, chi_max=chi_img, kernel=kernel)
     train_eval, test_eval = load_eval_set(
                                         dataset_name=dataset,
                                         batch_size=eval_size,
                                         resize=shape,
                                         patch_dim=pd,
-                                        chi_max=chi_img)
+                                        chi_max=chi_img,
+                                        kernel=kernel)
     train_eval, test_eval = cycle(train_eval), cycle(test_eval)
 
     opt_state = opt.init(tn)
-    attr = ["raw", "cpu", dataset_name, f"size_{shape[0]}x{shape[1]}", f"patch_{pd[0]}x{pd[1]}",\
-                f"chi_img{chi_img}"]
+    attr = ["raw", "cpu", dataset, f"size_{shape[0]}x{shape[1]}", kernel,\
+            f"patch_{pd[0]}x{pd[1]}", f"chi_img{chi_img}"]
 
     prepend = f"chi{chi_tn}"
-    if lr != 1.e-4:
-        prepend = f"chi{chi_tn}_lr{lr}"
 
-    dt = DataTracker(attr, prepend=prepend, experimental=False, overwrite=False)
+    dt = DataTracker(attr, prepend=prepend, experimental=False, overwrite=True)
 
     test_accuracy = accuracy(tn, next(test_eval))
     train_accuracy = accuracy(tn, next(train_eval))
