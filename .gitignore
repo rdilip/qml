@@ -2,4 +2,11 @@
 *.txt
 *.npy
 *.ipynb
+.*
+!/.gitignore
 main.py
+pres/
+img/
+data/
+raw/
+archive/
