@@ -1,7 +1,11 @@
 import numpy as np
-from utils import *
+from .utils import to_mps, pad_to_umps
 import torch
 from torchvision.transforms import Resize, Compose, ToTensor
+
+class ToNumpyArray(object):
+    def __call__(self, img):
+        return np.array(img)
 
 class Flatten(object):
     def __call__(self, img):
@@ -38,40 +42,17 @@ class ToMPS(object):
     def __init__(self, chi_max):
         self.chi = chi_max
 
-    def pad_fn(self, A):
-        d, chiL, chiR = A.shape
-        return np.pad(A, ((0,0), (0,self.chi-chiL), (0,self.chi-chiR)))
-
     def __call__(self, batched_vector):
-        # TODO make this much speed
-        alpha, Nc, Npx = batched_vector.shape
-        batched_vector = np.reshape(batched_vector, (alpha, Nc*Npx))
-        L = int(np.ceil(np.log2(Npx*Nc)))
-        dim = 2**L
-        batched_vector = np.pad(batched_vector, ((0,0),(0,dim-Npx*Nc)))
-        batched_vector = batched_vector.reshape((alpha,*[2]*L))
+        # TODO: normalization
+        alpha, N = batched_vector.shape  # alpha is number of patches, channels should be in N
+        L = int(np.ceil(np.log2(N))) # Assumes channels for normalization
         batched_mps = np.zeros((alpha, L, 2, self.chi, self.chi))
         for a in range(alpha):
-            vector = batched_vector[a]
-            mps = []
-            chiL = 1
-            for i in range(L-1):
-                vector = vector.reshape((chiL*2, 2**(L-i-1)))
-                A, s, B = np.linalg.svd(vector, full_matrices=False)
-                A, s, B = A[:,:self.chi], s[:self.chi], B[:self.chi,:]
-                mps.append(self.pad_fn(A.reshape((chiL, 2, -1)).transpose((1,0,2))))
-                vector = (np.diag(s)@B).reshape((-1, 2**(L-i-1)))
-                chiL = vector.shape[0]
-            mps.append(self.pad_fn(vector.reshape((chiL,2,1)).transpose((1,0,2))))
-            norm = mps_norm(mps)
-            if norm != 0.:
-                mps[0] /= norm
-            batched_mps[a] = mps
-        return np.array(batched_mps).reshape((alpha*L, 2, self.chi, self.chi))
+            mps = to_mps(batched_vector[a], chi_max=self.chi)
+            batched_mps[a] = pad_to_umps(mps)
+        return np.array(batched_mps)
 
 class ToTrivialMPS(object):
     def __call__(self, vector):
-        Npx, Nc = vector.shape
-        return vector.reshape((Npx, Nc, 1, 1))
-
+        return vector.reshape((2, -1)).T.reshape((-1, 2, 1, 1)) # always 2 channels, c comes first
 
