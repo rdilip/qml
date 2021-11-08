@@ -15,10 +15,11 @@ import os
 import numpy as np
 import pickle
 import warnings
+import time
 from math import log10, floor
 
 class DataTracker:
-    def __init__(self, attr, prepend="", experimental=False, overwrite=False):
+    def __init__(self, attr, experimental=False, overwrite=False):
         """ 
         Args:
             attr: list of attributes, each attribute generates a level in a 
@@ -39,9 +40,10 @@ class DataTracker:
         if prepend:
             self.fpath += "/" + prepend + "_"
 
-
-        self.tracked_params = {}
-        self.param_data = {}
+        
+        self.start_time = time.time()
+        self.param_data = {"time": self.start_time}
+        self.tracked_params = {"time": lambda: time.time() - self.start_time}
         self.Niter = 0
 
     def register(self, label, param_func):
@@ -58,9 +60,6 @@ class DataTracker:
                 self.param_data[label] = [param_func()]
             else:
                 self.param_data[label] = list(data)
-        # some edge cases
-        if label == "time_elapsed":
-            self.tracked_params[label] = lambda: param_func() + self.param_data[label][0]
         return self.param_data[label]
 
     def update(self, save_interval=1):
@@ -77,16 +76,10 @@ class DataTracker:
             self.save()
 
     def save(self):
-        """ Expanded save function that tries numpy, otherwise goes to pkl.
-        """
         if self.exp:
             return
         for label, data in self.param_data.items():
-            try:
-                np.save(self.fpath + label + ".npy", data, allow_pickle=True)
-            except:
-                with open(self.fpath + label + ".pkl", "wb+") as f:
-                    pickle.dump(data, f)
+            np.save(self.fpath + label + ".npy", data, allow_pickle=True)
 
 def load(fpath, label):
     """ Expanded load function that tries numpy, otherwise goes to pkl.
@@ -94,14 +87,7 @@ def load(fpath, label):
     try:
         data = np.load(fpath + label + ".npy", allow_pickle=True)
     except FileNotFoundError:
-        try:
-            with open(fpath + label + ".pkl", "rb") as f:
-                data = pickle.load(f)
-        except FileNotFoundError:
-            data = []
+        data = []
     return data
 
-def round_sf(x, m=1):
-    """ Round to m significant figures """
-    return round(x, -int(floor(log10(abs(x)))) + m - 1)
-
+    

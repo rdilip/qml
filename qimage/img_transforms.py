@@ -19,13 +19,6 @@ class FlattenPatches(object):
     def __str__(self):
         return "flatten_patches"
 
-class NormalizePatches(object):
-    def __call__(self, img):
-        Npatches, Npixels = img.shape
-        return img / np.linalg.norm(img, axis=-1)[:, None]
-    def __str__(self):
-        return "normalize_patches"
-
 class ToPatches(object):
     def __init__(self, pd):
         """ pd is a tuple of number of patches along each axis, e.g., (4, 2)
@@ -49,6 +42,13 @@ class NormalizeVector(object):
     def __str__(self):
         return "normalize"
 
+class NormalizePatches(object):
+    def __call__(self, img):
+        Npatches, Npixels = img.shape
+        return img / np.linalg.norm(img, axis=-1)[:, None]
+    def __str__(self):
+        return "normalizes"
+
 class NormalizeMPS(object):
     def __call__(self, mps):
         norm = mps_norm(mps)
@@ -66,13 +66,16 @@ class RelativeNormMPS(object):
         img: np.array of shape (Npatches, Npix), where Npix is the length of 
             the vector to be converted to an MPS.
     """
-    def __init__(self, *, chi_max):
+    def __init__(self, chi_max):
         self.chi_max = chi_max
     def __call__(self, img):
         chi = self.chi_max
         Npatches, Npix = img.shape
 
         norms = np.linalg.norm(img, axis=-1)
+
+        if Npix == 1:
+            return np.hstack((np.cos(0.5*np.pi*img), np.sin(0.5*np.pi*img))).reshape((-1, 2, 1, 1))
 
         norm_qubits = np.array(norms) / np.max(norms)
         norm_qubits = np.vstack((np.cos(0.5*np.pi*norm_qubits),\
@@ -87,6 +90,7 @@ class RelativeNormMPS(object):
 
         img = ToMPS(chi, append=norm_qubits)(img)
         return img
+
     def __str__(self):
         return f"relative_norm_mps_chi{self.chi_max}"
 

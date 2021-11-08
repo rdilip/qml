@@ -12,7 +12,7 @@ from tn_mps import *
 from torch.utils.data import DataLoader
 
 from qimage import qimage
-from qimage.img_transforms import Channel, ToMPS, Resize, ToTrivialMPS
+from qimage.img_transforms import Channel, ToMPS, Resize, ToTrivialMPS, NormalizeVector
 from data_tracker import DataTracker 
 
 def main(chi_tn, 
@@ -47,8 +47,8 @@ def main(chi_tn,
     train_eval, test_eval = cycle(train_eval), cycle(test_eval)
 
     opt_state = opt.init(tn)
-    #attr = ["raw", "cpu", dataset, f"size_{shape[0]}x{shape[1]}", kernel,\
-    #        f"patch_{pd[0]}x{pd[1]}", f"chi_img{chi_img}"]
+    attr = ["data", dataset, f"size_{shape[0]}x{shape[1]}",\
+            f"patch_{pd[0]}x{pd[1]}", f"chi_img{chi_img}"]
     attr = "test"
     prepend = f"chi{chi_tn}"
 
@@ -92,10 +92,8 @@ def main(chi_tn,
 if __name__ == '__main__':
     chi_tn = 16
     chi_img = 1
-    dataset_params = dict(
-                        transforms=[Resize((32,32)), Channel("diff"), ToTrivialMPS()],\
-                        transform_labels=["resize_32x32", "channel_diff", "trivial_mps"]
-                        )
+    dataset_params = dict(transforms=[Resize((32,32)), Channel("rot"), NormalizeVector(), ToTrivialMPS()],
+                                 transform_labels=["resize_32x32", "channel_rot", "normalize", "trivial_mps"])
     main(chi_tn,
         Nepochs=300, 
         dataset="fashion-mnist",
