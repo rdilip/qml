@@ -43,7 +43,7 @@ class DataTracker:
 
         
         self.start_time = time.time()
-        self.param_data = {"time": self.start_time}
+        self.param_data = {"time": [self.start_time]}
         self.tracked_params = {"time": lambda: time.time() - self.start_time}
         self.Niter = 0
 

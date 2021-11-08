@@ -3,13 +3,15 @@
 import os
 import torch
 from torchvision.datasets import MNIST, FashionMNIST
-from torchvision.transforms import Compose, ToTensor
+from torchvision.transforms import Compose
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 
 from .img_transforms import *
 
 
 # TODO write custom dataloader
+# TODO: Fix issue where on first load we get subscriptable error, then loading
+# as a tensor dataset has no problems...
 def numpy_collate(batch):
     if isinstance(batch, list):
         return torch.stack([x[0] for x in batch]).numpy(), np.array([x[1] for x in batch])

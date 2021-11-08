@@ -7,6 +7,10 @@ class ToNumpyArray(object):
     def __call__(self, img):
         return np.array(img)
 
+class ToTensor(ToTensor):
+    def __str__(self):
+        return "torch_tensor"
+
 class Resize(Resize):
     def __str__(self):
         size = self.size
@@ -87,7 +91,6 @@ class RelativeNormMPS(object):
 
         norms[zero_norms] = 1.0
         img /= norms[:, None]
-
         img = ToMPS(chi, append=norm_qubits)(img)
         return img
 
@@ -119,7 +122,7 @@ class ToMPS(object):
                 mps.append(append[a].reshape((2,1,1)))
             # mps = normalize_mps(mps)
             batched_mps[a] = pad_to_umps(mps)
-        return np.array(batched_mps)
+        return np.array(batched_mps).reshape((Npatches*L, 2, chi, chi))
 
     def __str__(self):
         return f"mps_chi{self.chi}"

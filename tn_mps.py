@@ -15,7 +15,6 @@ def _reduce_mps(x0, x1):
 @jax.jit
 def evaluate(tn, img):
     """ img should be shape (L, 2) """
-
     chi = tn['left'].shape[-1]
 
     L = img.shape[0]

@@ -16,11 +16,12 @@ from qimage.img_transforms import Resize, ToMPS, ToTrivialMPS, NormalizeVector,\
     ToPatches, NormalizeMPS, FlattenPatches, NormalizePatches, RelativeNormMPS
 from data_tracker import DataTracker 
 
-def main(chi_tn, 
+def main(chi_tn, L,
         Nepochs=300, 
         batch_size=128,
         eval_size=1000,
         pd=(32,32),
+        chi_img=4,
         **dataset_params):
     opt = optax.adam(1.e-4) 
 
@@ -35,8 +36,6 @@ def main(chi_tn,
         return tn, opt_state
 
     shape = (32,32)
-
-    L = np.prod(shape)
     tn = init(L, chi_tn)
 
     train, test = qimage.get_dataset(**dataset_params)
@@ -89,13 +88,19 @@ def main(chi_tn,
     dt.save()
 
 def cluster_main(pd, chi_tn, chi_img):
-    dataset_params = dict(transforms=[Resize((32,32)), ToPatches(pd), FlattenPatches(), RelativeNormMPS(chi_img)],\
+    shape = (32,32)
+    dataset_params = dict(transforms=[Resize(shape), ToPatches(pd), FlattenPatches(), RelativeNormMPS(chi_img)],\
                         dataset_name="fashion-mnist")
-
-    main(chi_tn,
+    pixels_per_patch = np.prod(shape) // np.prod(pd)
+    if pixels_per_patch == 1:
+        L = np.prod(shape)
+    else:
+        L = int(np.prod(pd) * (int(np.ceil(np.log2(pixels_per_patch))) + 1))
+    main(chi_tn, L,
         Nepochs=300, 
         batch_size=128,
         eval_size=1000,
+        chi_img=chi_img,
         pd=pd,
         **dataset_params)
 
