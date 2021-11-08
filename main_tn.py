@@ -12,14 +12,15 @@ from tn_mps import *
 from torch.utils.data import DataLoader
 
 from qimage import qimage
-from qimage.img_transforms import Channel, ToMPS, Resize, ToTrivialMPS, NormalizeVector
+from qimage.img_transforms import Resize, ToMPS, ToTrivialMPS, NormalizeVector,\
+    ToPatches, NormalizeMPS, FlattenPatches, NormalizePatches, RelativeNormMPS
 from data_tracker import DataTracker 
 
 def main(chi_tn, 
         Nepochs=300, 
-        dataset="mnist",
         batch_size=128,
         eval_size=1000,
+        pd=(32,32),
         **dataset_params):
     opt = optax.adam(1.e-4) 
 
@@ -47,12 +48,10 @@ def main(chi_tn,
     train_eval, test_eval = cycle(train_eval), cycle(test_eval)
 
     opt_state = opt.init(tn)
-    attr = ["data", dataset, f"size_{shape[0]}x{shape[1]}",\
+    attr = ["output", dataset_params['dataset_name'], f"size_{shape[0]}x{shape[1]}",\
             f"patch_{pd[0]}x{pd[1]}", f"chi_img{chi_img}"]
-    attr = "test"
-    prepend = f"chi{chi_tn}"
 
-    dt = DataTracker(attr, prepend=prepend, experimental=False, overwrite=True)
+    dt = DataTracker(attr, experimental=False, overwrite=True, chi=chi_tn)
 
     test_accuracy = accuracy(tn, next(test_eval))
     train_accuracy = accuracy(tn, next(train_eval))
@@ -92,13 +91,15 @@ def main(chi_tn,
 if __name__ == '__main__':
     chi_tn = 16
     chi_img = 1
-    dataset_params = dict(transforms=[Resize((32,32)), Channel("rot"), NormalizeVector(), ToTrivialMPS()],
-                                 transform_labels=["resize_32x32", "channel_rot", "normalize", "trivial_mps"])
+    pd = (32, 32)
+    dataset_params = dict(transforms=[Resize((32,32)), ToPatches(pd), FlattenPatches(), RelativeNormMPS(4)],\
+                        dataset_name="fashion-mnist")
+
     main(chi_tn,
         Nepochs=300, 
-        dataset="fashion-mnist",
         batch_size=128,
         eval_size=1000,
+        pd=pd,
         **dataset_params)
 
 

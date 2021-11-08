@@ -55,7 +55,7 @@ def get_dataset(
                     torch.load(dirname + "test_targets.pt"))
     else:
         train, test = transform_and_cache(dataset_fn, composed_transforms, dirname)
-
+    print("Loaded and cached dataset")
     return train, test
 
 def transform_and_cache(dataset_fn, transforms, dirname):

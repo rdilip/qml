@@ -19,7 +19,7 @@ import time
 from math import log10, floor
 
 class DataTracker:
-    def __init__(self, attr, experimental=False, overwrite=False):
+    def __init__(self, attr, experimental=False, overwrite=False, **kwargs):
         """ 
         Args:
             attr: list of attributes, each attribute generates a level in a 
@@ -37,8 +37,9 @@ class DataTracker:
         self.fpath = "/".join(attr)
         if not os.path.exists(self.fpath):
             os.makedirs(self.fpath)
-        if prepend:
-            self.fpath += "/" + prepend + "_"
+        if len(kwargs) > 0:
+            for label in kwargs:
+                self.fpath += "/" + f"{label}{kwargs[label]}" + "_"
 
         
         self.start_time = time.time()
