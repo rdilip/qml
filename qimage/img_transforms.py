@@ -1,5 +1,5 @@
 import numpy as np
-from .utils import to_mps, pad_to_umps
+from .utils import to_mps, pad_to_umps, mps_norm
 import torch
 from torchvision.transforms import Resize, Compose, ToTensor
 
@@ -7,52 +7,122 @@ class ToNumpyArray(object):
     def __call__(self, img):
         return np.array(img)
 
-class Flatten(object):
-    def __call__(self, img):
-        Nc, Nx, Ny = img.shape
-        img = np.reshape(np.array(img), (Nc, Nx*Ny))
-        return img
+class Resize(Resize):
+    def __str__(self):
+        size = self.size
+        return f"resize_{size[0]}x{size[1]}"
 
-class SplitPatches(object):
-    def __init__(self, ds):
-        self.ds = ds
+class FlattenPatches(object):
     def __call__(self, img):
-        Nx, Ny = self.ds
+        Nc, Npy, Npx, H, W = img.shape
+        return np.transpose(img, (1,2,3,4,0)).reshape((Npx*Npy, H*W*Nc))
+    def __str__(self):
+        return "flatten_patches"
+
+class NormalizePatches(object):
+    def __call__(self, img):
+        Npatches, Npixels = img.shape
+        return img / np.linalg.norm(img, axis=-1)[:, None]
+    def __str__(self):
+        return "normalize_patches"
+
+class ToPatches(object):
+    def __init__(self, pd):
+        """ pd is a tuple of number of patches along each axis, e.g., (4, 2)
+        means 4 patches along y axis and 2 patches along x """
+        self.pd = pd
+    def __call__(self, img):
+        pd = self.pd
         C, H, W = img.shape
-        if H % Nx != 0 or W % Ny != 0:
-            raise ValueError("Invalid number of patches, must divide evenly")
-        px, py = H // Nx, W // Ny
-        img_split = torch.Tensor(img).unfold(1,px,px).unfold(2,py,py)
-        return np.array(img_split.reshape(C, -1, px, py), dtype=float).transpose((1,0,2,3))
+        assert (H % pd[0] == 0 and W % pd[1] == 0), "pd must be evenly divisible"\
+            "by image size"
+        Wp, Hp = W // pd[1], H // pd[0]
+        patches = torch.Tensor(img).unfold(-2, Hp, Hp).unfold(-2, Wp, Wp)
+        return patches
+    def __str__(self):
+        pd = self.pd
+        return f"patches_{pd[0]}x{pd[1]}"
 
-class Channel(object):
-    def __init__(self, method):
-        self.method = method
+class NormalizeVector(object):
     def __call__(self, img):
-        if self.method == "diff":
-            return torch.cat((1-img, img), 0)
-        elif self.method == "rot":
-            return torch.cat((np.cos(0.5*np.pi*img), np.sin(0.5*np.pi*img)), 0)
-        elif self.method == "fourier":
-            f = torch.fft.fft2(img)
-            f /= np.prod(img.shape[-2:])
-            return torch.cat((torch.real(f), torch.imag(f)), 0)
+        return img / np.linalg.norm(img)
+    def __str__(self):
+        return "normalize"
+
+class NormalizeMPS(object):
+    def __call__(self, mps):
+        norm = mps_norm(mps)
+        mps[0] /= norm
+        return mps
+    def __str__(self):
+        return "normalize"
+
+class RelativeNormMPS(object):
+    """ This converts an image (possibly patched) to an MPS with an additional
+    qubit encoding the norm. Will throw an error if no actual compression is
+    being done.
+    Args:
+        chi_max: int, maximum bond dimension.
+        img: np.array of shape (Npatches, Npix), where Npix is the length of 
+            the vector to be converted to an MPS.
+    """
+    def __init__(self, *, chi_max):
+        self.chi_max = chi_max
+    def __call__(self, img):
+        chi = self.chi_max
+        Npatches, Npix = img.shape
+
+        norms = np.linalg.norm(img, axis=-1)
+
+        norm_qubits = np.array(norms) / np.max(norms)
+        norm_qubits = np.vstack((np.cos(0.5*np.pi*norm_qubits),\
+                                 np.sin(0.5*np.pi*norm_qubits))).T
+
+        zero_norms = np.isclose(norms, 0.)
+        Nzero = np.sum(zero_norms)
+        img[zero_norms] = torch.ones((np.sum(zero_norms), Npix)) / np.sqrt(Npix)
+
+        norms[zero_norms] = 1.0
+        img /= norms[:, None]
+
+        img = ToMPS(chi, append=norm_qubits)(img)
+        return img
+    def __str__(self):
+        return f"relative_norm_mps_chi{self.chi_max}"
 
 class ToMPS(object):
-    def __init__(self, chi_max):
+    def __init__(self, chi_max, append=None):
         self.chi = chi_max
+        self.append = append
 
     def __call__(self, batched_vector):
         # TODO: normalization
-        alpha, N = batched_vector.shape  # alpha is number of patches, channels should be in N
+        chi, append = self.chi, self.append
+
+        Npatches, N = batched_vector.shape  # alpha is number of patches, channels should be in N
         L = int(np.ceil(np.log2(N))) # Assumes channels for normalization
-        batched_mps = np.zeros((alpha, L, 2, self.chi, self.chi))
-        for a in range(alpha):
+        if append is not None:
+            L += 1
+        batched_mps = np.zeros((Npatches, L, 2, chi, chi))
+
+        chi_sat = 2**(L//2)
+        if self.chi > chi_sat:
+            raise ValueError(f"chi is greater than bond dimension saturation {chi_sat}")
+
+        for a in range(Npatches):
             mps = to_mps(batched_vector[a], chi_max=self.chi)
+            if append is not None:
+                mps.append(append[a].reshape((2,1,1)))
+            # mps = normalize_mps(mps)
             batched_mps[a] = pad_to_umps(mps)
         return np.array(batched_mps)
+
+    def __str__(self):
+        return f"mps_chi{self.chi}"
 
 class ToTrivialMPS(object):
     def __call__(self, vector):
         return vector.reshape((2, -1)).T.reshape((-1, 2, 1, 1)) # always 2 channels, c comes first
+    def __str__(self):
+        return f"trivial_mps"
 

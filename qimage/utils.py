@@ -1,19 +1,17 @@
 """ Utility functions for MPS """
 import numpy as np
 import jax.numpy as jnp
+import jax
 
-def check_param_saturation(img_size, pd, chi_img):
-    """ Checks whether the mps method actually does any compression """
-    Npatches = np.prod(img_size) / np.prod(pd)
-    Npx = 2 * np.prod(pd) # 2 channels
-    L = int(np.ceil(np.log2(Npx)))
- 
-    chi_max = 2**(L//2)
-    print("chi_max: ", int(chi_max))
-    return chi_img <= chi_max
+def check_param_saturation(vector_size, chi_img):
+    """ Checks whether the provided compression is actually compressing the
+    vector """
+    L = int(np.ceil(np.log2(vector_size)))
+    Nparams_mps = chi_img * chi_img * L * 2
+    return vector_size >= Nparams_mps
 
 def mps_norm(mps):
-    return  mps_overlap(mps, mps)
+    return mps_overlap(mps, mps)
 
 def mps_overlap(mps1, mps2):
     L = len(mps1)
@@ -40,11 +38,16 @@ def to_mps(invector, chi_max=10):
     mps.append(right.T.reshape((2,-1, 1)))
     return mps
 
+def normalize_mps(mps):
+    ovlp = mps_norm(mps)
+    mps[0] /= ovlp
+    return mps
+
 def to_vector(mps):
-    outvector = mps[0]
+    outvector = mps[0][:, 0, :]
     for i in range(1, len(mps)):
         outvector = np.tensordot(outvector, mps[i], [-1,-2])
-    return outvector.ravel()
+    return outvector[..., 0].ravel()
 
 def pad_to_umps(mps):
     L = len(mps)

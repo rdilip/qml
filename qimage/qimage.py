@@ -19,7 +19,6 @@ def get_dataset(
         dataset_name="fashion-mnist",
         batch_size=128,
         transforms=None,
-        transform_labels=None,
         overwrite=False):
     """ Returns a dataset with the applied transformations. User is responsible
     for ensuring transform_labels and transforms are in sync; calls like ToTensor()
@@ -27,15 +26,16 @@ def get_dataset(
     Args:
         dataset_name: str, one of `mnist` or `fashion-mnist`
         batch_size: int
-        transforms: A list of transforms to apply.
-        transform_labels: List of strings, labels for each transform.
+        transforms: A list of transforms to apply. You should override the 
+            __str__ function of each transform, since that will be the cached
+            directory name.
         overwrite: bool, if True, overwrites existing files
     Returns:
         train, test: Datasets of train and test
     """
 
     if transforms is None:
-        transforms, transform_labels = [], []
+        transforms = []
     transforms.insert(0, ToTensor())
 
     if dataset_name == "fashion-mnist":
@@ -46,7 +46,7 @@ def get_dataset(
         raise ValueError("Invalid dataset name. Choose `mnist` or `fashion-mnist`")
 
     composed_transforms = Compose(transforms)
-    dirname = get_dirname(dataset_name, [tl for tl in transform_labels if tl is not None])
+    dirname = get_dirname(dataset_name, [str(fn) for fn in transforms])
 
     if os.path.exists(dirname + "train_data.pt") and not overwrite:
         train = TensorDataset(torch.load(dirname + "train_data.pt"),
@@ -85,7 +85,7 @@ if __name__ == '__main__':
     batch_size=128
     transforms=[Resize((32, 32)), ToTensor(), Channel("diff"), Flatten()]
     transform_labels=["size_32x32", None, "kernel_diff", None]
-    train, test = get_dataset(dataset_name, batch_size, transforms, transform_labels, overwrite=False)
+    train, test = get_dataset(dataset_name, batch_size, transforms, overwrite=False)
     dl = DataLoader(train)
     print(next(iter(dl))[1])
 
