@@ -88,11 +88,8 @@ def main(chi_tn,
 
     dt.save()
 
-if __name__ == '__main__':
-    chi_tn = 16
-    chi_img = 1
-    pd = (32, 32)
-    dataset_params = dict(transforms=[Resize((32,32)), ToPatches(pd), FlattenPatches(), RelativeNormMPS(4)],\
+def cluster_main(pd, chi_tn, chi_img):
+    dataset_params = dict(transforms=[Resize((32,32)), ToPatches(pd), FlattenPatches(), RelativeNormMPS(chi_img)],\
                         dataset_name="fashion-mnist")
 
     main(chi_tn,
