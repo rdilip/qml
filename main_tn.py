@@ -50,7 +50,7 @@ def main(chi_tn, L,
     attr = ["output", dataset_params['dataset_name'], f"size_{shape[0]}x{shape[1]}",\
             f"patch_{pd[0]}x{pd[1]}", f"chi_img{chi_img}"]
 
-    dt = DataTracker(attr, experimental=False, overwrite=True, chi=chi_tn)
+    dt = DataTracker(attr, experimental=False, overwrite=False, chi=chi_tn)
 
     test_accuracy = accuracy(tn, next(test_eval))
     train_accuracy = accuracy(tn, next(train_eval))
