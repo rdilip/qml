@@ -49,7 +49,8 @@ def get_dataset(
 
     composed_transforms = Compose(transforms)
     dirname = get_dirname(dataset_name, [str(fn) for fn in transforms])
-
+    
+    # TODO this doesn't actually work...fix this later
     if os.path.exists(dirname + "train_data.pt") and not overwrite:
         train = TensorDataset(torch.load(dirname + "train_data.pt"),
                     torch.load(dirname + "train_targets.pt"))

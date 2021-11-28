@@ -6,38 +6,53 @@ import torch
 import matplotlib.pyplot as plt
 from .utils import to_vector
 
-def visualize_img(img,
-                    patched=False,
-                    scale=1,
-                    size=(32,32),
-                    **params):
-    """ Visualizes img, where img is  of shape (*, Nc, Ny, Nx). """
-    img = np.array(img)
-    Ny, Nx = size
+def visualize_patched_img(img, pd, size=(32,32), kernel=True, **kwargs):
+    """ Visualizes a patched image where the patches are explicit. Note the 
+    difference between this and explicitly unrolling the patches into one long
+    vector. 
+    Args:
+        img: np.ndarray of shape (pd[0], pd[1], Ny*Nx*2)
+        pd: tuple of shape (pdy, pdx), describing the splitting of the image.
+        size: Original shape of image
+    Returns:
+        None
+    """
 
-    if patched is True:
-        assert "pd" in params
-        pd = params["pd"]
+    assert size[0] % pd[0] == 0 and size[1] % pd[1] == 0
+    pNy, pNx = size[0] // pd[0], size[1] // pd[1]
+    if kernel:
+        img = img.reshape((*pd, pNy*pNx*2))
     else:
-        pd = (1,1)
+        img = img.reshape((*pd, pNy*pNx))
 
-    pNy, pNx = Ny // pd[0], Nx // pd[1]
+    fig = plt.figure(figsize=(4,4))
+    
+    for yp in range(pd[0]):
+        for xp in range(pd[1]):
+            ax = fig.add_subplot(pd[0], pd[1], yp*pd[1]+xp+1, xticks=[], yticks=[])
+            visualize_vector(img[..., yp, xp, :], size=(pNy, pNx), kernel=kernel, **kwargs)
+    plt.subplots_adjust(wspace=0, hspace=0)
 
-    # Flattened image: unroll to (patch y, patch x, Npatch y, Npatch x)
-    if len(img.shape) == 2:
-        img = img.reshape((*pd, Ny//pd[0], Nx//pd[1]))
-
-    if patched is True:
-        fig = plt.figure(figsize=(4,4))
-        
-        for yp in range(pd[0]):
-            for xp in range(pd[1]):
-                ax = fig.add_subplot(pd[0], pd[1], yp*pd[1]+xp+1, xticks=[], yticks=[])
-                visualize_img(img[..., yp, xp, :, :], patched=False, scale=scale, size=(pNy, pNx))
-        plt.subplots_adjust(wspace=0, hspace=0)
-        return 
-
-    plt.imshow(img.reshape((Ny, Nx)), vmin=0, vmax=scale)
+def visualize_vector(vec, size=(32,32), kernel=True, normalized=True, scale=1):
+    """ Displays a nonpatched vector. 
+    Args:
+        vec: Vector to be displayed
+        size: tuple (Ny, Nx) s.t. Ny * Nx == len(vec)
+        Kernel: bool, if true, assumes the vector has the form 
+            np.dstack([np.cos(pi/2 * vec), np.sin(pi/2 * vec)]).ravel()
+        scale: float, maximum value of colorplot
+    Returns:
+        None
+    """
+    Ny, Nx = size
+    assert vec.shape[0] == Ny * Nx * (2 if kernel else 1)
+    vec = np.array(vec, dtype=np.float64)
+    if normalized:
+        vec *= np.sqrt(np.prod(size))
+    if kernel:
+        vec = np.arccos(vec[::2]) * 2 / np.pi
+    plt.imshow(vec.reshape((Ny, Nx)), vmin=0, vmax=scale)
+    return vec
 
 def mps_to_vector_img(img, norm_qubit=False):
     """ First index should be patches -- always! """

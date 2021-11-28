@@ -1,7 +1,10 @@
 """ Utility functions for MPS """
 import numpy as np
 import jax.numpy as jnp
-import jax
+# import jax
+# from jax.config import config
+# config.update("jax_enable_x64", True)
+
 
 def check_param_saturation(vector_size, chi_img):
     """ Checks whether the provided compression is actually compressing the
@@ -25,7 +28,7 @@ def mps_overlap(mps1, mps2):
 def to_mps(invector, chi_max=10):
     N = invector.shape[-1]
     L = int(np.ceil(np.log2(N)))
-    right = np.pad(invector, (0, 2**L-N))
+    right = np.array(np.pad(invector, (0, 2**L-N)), dtype=np.float64)
 
     chiL = 1
     mps = []
@@ -51,12 +54,12 @@ def to_vector(mps):
 
 def pad_to_umps(mps):
     L = len(mps)
-    chi = jnp.max(jnp.array([i.shape[1:] for i in mps]))
+    chi = np.max(np.array([i.shape[1:] for i in mps]))
     umps = []
     for i in range(L):
         _, chiL, chiR = mps[i].shape
-        umps.append(jnp.pad(mps[i], ((0,0),(0,chi-chiL),(0,chi-chiR))))
-    return jnp.array(umps)
+        umps.append(np.pad(mps[i], ((0,0),(0,chi-chiL),(0,chi-chiR))))
+    return np.array(umps, dtype=np.float64)
 
 def umps_to_vector(umps):
     mps = [np.array(a) for a in umps]
