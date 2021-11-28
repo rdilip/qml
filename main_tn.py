@@ -61,7 +61,7 @@ def main(chi_tn, L,
     dt.register("train_accuracy", lambda: train_accuracy)
     dt.register("test_accuracy", lambda: test_accuracy)
     dt.register("time_elapsed", lambda: time.time() - start)
-    tn = dt.register("model", lambda: tn)[-1]
+    tn = dt.register("model", lambda: tn, save_interval=Nepochs//20)[-1]
 
     print("Starting loss: " + str(loss(tn, next(test_eval))))
 

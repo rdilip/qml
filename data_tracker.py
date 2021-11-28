@@ -45,9 +45,10 @@ class DataTracker:
         self.start_time = time.time()
         self.param_data = {"time": [self.start_time]}
         self.tracked_params = {"time": lambda: time.time() - self.start_time}
+        self.save_intervals = {"time": 1}
         self.Niter = 0
 
-    def register(self, label, param_func):
+    def register(self, label, param_func, save_interval=1):
         """
         Args:
             label: string, name of observation
@@ -55,6 +56,8 @@ class DataTracker:
         """
         self.tracked_params[label] = param_func
         self.param_data[label] = [param_func()]
+        self.save_intervals[label] = save_interval
+
         if not self.overwrite:
             data = load(self.fpath, label)
             if not len(data):
@@ -73,14 +76,15 @@ class DataTracker:
         for label, param_func in self.tracked_params.items():
             self.param_data[label].append(param_func())
         self.Niter += 1
-        if self.Niter % save_interval == 0:
-            self.save()
+        for param in self.tracked_params:
+            if self.Niter % self.save_intervals[param] == 0:
+                self.save(param)
 
-    def save(self):
+    def save(self, param_label):
         if self.exp:
             return
-        for label, data in self.param_data.items():
-            np.save(self.fpath + label + ".npy", data, allow_pickle=True)
+        data = self.param_data[param_label]
+        np.save(self.fpath + param_label + ".npy", data, allow_pickle=True)
 
 def load(fpath, label):
     """ Expanded load function that tries numpy, otherwise goes to pkl.

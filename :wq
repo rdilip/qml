@@ -1,0 +1,54 @@
+
+# Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
+export PATH="$PATH:$HOME/.rvm/bin"
+# export PATH="/usr/local/anaconda3/bin:$PATH"  # commented out by conda initialize
+export PATH=$PATH:/usr/local/bin
+export PATH=$PATH:~/.bin
+# Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
+export PATH=$PATH:/usr/local/go/bin
+export PATH="$PATH:$HOME/.rvm/bin"
+
+alias python2="python2.7"
+# alias g++="g++-9"
+alias pauling="ssh rdilip@pauling.caltech.edu"
+export PYTHONPATH=/home/abc/pyscf:$PYTHONPATH
+# export PYTHONPATH=/Users/rdilip/Documents/gkc/autodiff/pyscf:$PYTHONPATH
+
+export PATH="$HOME/.cargo/bin:$PATH"
+export PATH=$PATH:/Applications/Postgres.app/Contents/Versions/12.0/bin
+alias jqt="jupyter qtconsole"
+
+alias bart="ssh ge38huj@bart.t30.ph.tum.de"
+alias ralph="ssh ge38huj@ralph.t30.ph.tum.de"
+alias barney="ssh ge38huj@barney.t30.ph.tum.de"
+alias patty="ssh ge38huj@patty.t30.ph.tum.de"
+
+alias jnb="jupyter notebook"
+alias arjun="python ~/Documents/tutoring/log.py arjun"
+alias pw="cd ~/Documents/gkc/graphene/pw"
+
+remote() {
+	ssh -N -f -L "localhost:""$1"":localhost:""$2" rdilip@pauling.caltech.edu
+}
+
+alias g++='g++-10'
+
+export GOPATH=$(go env GOPATH)
+export PATH=$PATH:$(go env GOPATH)/bin
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/Users/rdilip/anaconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/Users/rdilip/anaconda3/etc/profile.d/conda.sh" ]; then
+        . "/Users/rdilip/anaconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/Users/rdilip/anaconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+alias fetch_output="rsync -av -e ssh --exclude='*model.npy' ge38huj@bart.t30.ph.tum.de:/space/ge38huj/qml/output ."
