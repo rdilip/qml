@@ -8,17 +8,14 @@ class ToNumpyArray(object):
     def __call__(self, img):
         return np.array(img)
 
-
 class ToTensor(ToTensor):
     def __str__(self):
         return "torch_tensor"
-
 
 class Resize(Resize):
     def __str__(self):
         size = self.size
         return f"resize_{size[0]}x{size[1]}"
-
 
 class FlattenPatches(object):
     def __call__(self, img):
@@ -27,7 +24,6 @@ class FlattenPatches(object):
 
     def __str__(self):
         return "flatten_patches"
-
 
 class ToPatches(object):
     def __init__(self, pd):
@@ -176,10 +172,9 @@ class ToMPS(object):
                 f"chi is greater than bond dimension saturation {chi_sat}")
 
         for a in range(Npatches):
-            mps=to_mps(batched_vector[a], chi_max=self.chi)
+            mps = to_mps(batched_vector[a], chi_max=self.chi)
             if append is not None:
                 mps.append(append[a].reshape((2, 1, 1)))
-            # mps = normalize_mps(mps)
             batched_mps[a] = pad_to_umps(mps)
         batched_mps = np.array(batched_mps, dtype=np.float64).reshape((Npatches, L, 2, chi, chi))
         if self.normalize:

@@ -89,8 +89,9 @@ def main(chi_tn, L,
 
 def cluster_main(pd, chi_tn, chi_img):
     shape = (32,32)
-    dataset_params = dict(transforms=[Resize(shape), ToPatches(pd), FlattenPatches(), RelativeNormMPS(chi_img)],\
-                        dataset_name="fashion-mnist")
+    dataset_params = dict(transforms=[Resize(shape), ToPatches(pd),\
+            FlattenPatches(), Snake(), ColorQubitMPS(chi_img)],\
+            dataset_name="fashion-mnist")
     pixels_per_patch = np.prod(shape) // np.prod(pd)
     if pixels_per_patch == 1:
         L = np.prod(shape)
@@ -104,4 +105,5 @@ def cluster_main(pd, chi_tn, chi_img):
         pd=pd,
         **dataset_params)
 
-
+if __name__ == '__main__':
+    cluster_main()
