@@ -139,7 +139,6 @@ class ColorQubitMPS(object):
         chi = self.chi_max
         Npatches, Npix = img.shape
         if Npix == 1:
-            print("Npix is 1")
             return np.hstack((np.cos(0.5*np.pi*img), np.sin(0.5*np.pi*img))).reshape((-1, 2, 1, 1))
         img = np.dstack((np.cos(0.5*np.pi*img), np.sin(0.5*np.pi*img)))
         img = img.reshape((Npatches, Npix*2))
