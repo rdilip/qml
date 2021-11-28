@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 
 from qimage import qimage
 from qimage.img_transforms import Resize, ToMPS, ToTrivialMPS, NormalizeVector,\
-    ToPatches, NormalizeMPS, FlattenPatches, NormalizePatches, RelativeNormMPS
+    ToPatches, NormalizeMPS, FlattenPatches, NormalizePatches, RelativeNormMPS, ColorQubitMPS, Snake
 from data_tracker import DataTracker 
 
 def main(chi_tn, L,
