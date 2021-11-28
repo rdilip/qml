@@ -86,6 +86,10 @@ class DataTracker:
         data = self.param_data[param_label]
         np.save(self.fpath + param_label + ".npy", data, allow_pickle=True)
 
+    def save_all(self):
+        for param in self.tracked_params:
+            self.save(param)
+
 def load(fpath, label):
     """ Expanded load function that tries numpy, otherwise goes to pkl.
     """
