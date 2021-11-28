@@ -77,7 +77,10 @@ def transform_and_cache(dataset_fn, transforms, dirname):
     torch.save(train_targets, dirname + "train_targets.pt")
     torch.save(test_targets, dirname + "test_targets.pt")
 
-    return train_dl, test_dl
+    train = TensorDataset(train_data, train_targets)
+    test = TensorDataset(test_data, test_targets)
+
+    return train, test
 
 def get_dirname(dataset_name, transform_labels):
     directory = "/".join(transform_labels)
