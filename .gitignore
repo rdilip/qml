@@ -12,3 +12,4 @@ nb/
 */.*
 !/.gitignore
 *.pt
+output/
