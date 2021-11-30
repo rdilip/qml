@@ -85,7 +85,7 @@ def main(chi_tn, L,
                 f"{train_loss}/{test_loss}")
         dt.update(save_interval=1)
 
-    dt.save()
+    dt.save_all()
 
 def cluster_main(pd, chi_tn, chi_img):
     shape = (32,32)
