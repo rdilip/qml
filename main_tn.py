@@ -44,6 +44,8 @@ def main(chi_tn, L,
     train_eval = DataLoader(train, batch_size=eval_size, collate_fn=qimage.numpy_collate)
     test_eval = DataLoader(train, batch_size=eval_size, collate_fn=qimage.numpy_collate)
 
+    final_test_eval = DataLoader(train, batch_size=len(test), collate_fn=qimage.numpy_collate)
+
     train_eval, test_eval = cycle(train_eval), cycle(test_eval)
 
     opt_state = opt.init(tn)
@@ -85,6 +87,8 @@ def main(chi_tn, L,
                 f"{train_loss}/{test_loss}")
         dt.update(save_interval=1)
 
+    final_acc = accuracy(tn, next(cycle(final_test_eval)))
+    print("Final test accuracy: " + final_acc)
     dt.save_all()
 
 def cluster_main(pd, chi_tn, chi_img):
