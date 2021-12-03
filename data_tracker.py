@@ -66,7 +66,7 @@ class DataTracker:
                 self.param_data[label] = list(data)
         return self.param_data[label]
 
-    def update(self, save_interval=1):
+    def update(self):
         """
         Args:
             save_interval: Save every save_interval iterations.

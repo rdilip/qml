@@ -63,7 +63,9 @@ def main(chi_tn, L,
     dt.register("train_accuracy", lambda: train_accuracy)
     dt.register("test_accuracy", lambda: test_accuracy)
     dt.register("time_elapsed", lambda: time.time() - start)
-    tn = dt.register("model", lambda: tn, save_interval=Nepochs//20)[-1]
+
+    si = Nepochs//20 if Nepochs > 20 else Nepochs
+    tn = dt.register("model", lambda: tn, save_interval=si)[-1]
 
     print("Starting loss: " + str(loss(tn, next(test_eval))))
 
@@ -85,7 +87,7 @@ def main(chi_tn, L,
                 f"{train_accuracy:.4f}/{test_accuracy:.4f}.")
         print(f"Train/Test loss: "
                 f"{train_loss}/{test_loss}")
-        dt.update(save_interval=1)
+        dt.update()
 
     final_acc = accuracy(tn, next(cycle(final_test_eval)))
     print("Final test accuracy: " + final_acc)
@@ -102,7 +104,7 @@ def cluster_main(pd, chi_tn, chi_img):
     else:
         L = int(np.prod(pd) * (int(np.ceil(np.log2(pixels_per_patch))) + 1))
     main(chi_tn, L,
-        Nepochs=300, 
+        Nepochs=10, 
         batch_size=128,
         eval_size=1000,
         chi_img=chi_img,
@@ -110,4 +112,4 @@ def cluster_main(pd, chi_tn, chi_img):
         **dataset_params)
 
 if __name__ == '__main__':
-    cluster_main()
+    cluster_main((1,1), 16, 2)
