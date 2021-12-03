@@ -89,11 +89,11 @@ def main(chi_tn, L,
                 f"{train_loss}/{test_loss}")
         dt.update()
 
-    final_acc = accuracy(tn, next(cycle(final_test_eval)))
-    print("Final test accuracy: " + final_acc)
+    final_acc = jax.device_get(accuracy(tn, next(cycle(final_test_eval))))
+    print("Final test accuracy: " + str(final_acc))
     dt.save_all()
 
-def cluster_main(pd, chi_tn, chi_img):
+def cluster_main(pd, chi_tn, chi_img, Nepochs=300):
     shape = (32,32)
     dataset_params = dict(transforms=[Resize(shape), ToPatches(pd),\
             FlattenPatches(), Snake(), ColorQubitMPS(chi_img)],\
@@ -104,7 +104,7 @@ def cluster_main(pd, chi_tn, chi_img):
     else:
         L = int(np.prod(pd) * (int(np.ceil(np.log2(pixels_per_patch))) + 1))
     main(chi_tn, L,
-        Nepochs=10, 
+        Nepochs=Nepochs, 
         batch_size=128,
         eval_size=1000,
         chi_img=chi_img,
@@ -112,4 +112,4 @@ def cluster_main(pd, chi_tn, chi_img):
         **dataset_params)
 
 if __name__ == '__main__':
-    cluster_main((1,1), 16, 2)
+    cluster_main((1,1), 16, 2, Nepochs=5)
