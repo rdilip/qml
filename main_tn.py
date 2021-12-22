@@ -93,7 +93,7 @@ def main(chi_tn, L,
     print("Final test accuracy: " + str(final_acc))
     dt.save_all()
 
-def cluster_main(pd, chi_tn, chi_img, Nepochs=300):
+def cluster_main(pd, chi_tn, chi_img, Nepochs=1000):
     shape = (32,32)
     dataset_params = dict(transforms=[Resize(shape), ToPatches(pd),\
             FlattenPatches(), Snake(), ColorQubitMPS(chi_img)],\
