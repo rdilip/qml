@@ -1,0 +1,39 @@
+#!/bin/bash
+#$ -S /bin/bash
+#$ -cwd
+# hardware requirements:
+#$ -l h_vmem=8G,h_cpu=23:59:00,h_fsize=8G
+
+# if you want to get notified by email, remove the first `# ` from the following lines (such that they start with `#$ -...`)
+# #$ -M max.mustermann@tum.de  # put your email address here!
+# #$ -m a  # n="NO_MAIL", a="MAIL_AT_ABORT", e="MAIL_AT_EXIT", combination `-m ae` is allowed
+
+#$ -pe smp 4
+#$ -R y
+#$ -q cond-mat-short
+
+export MKL_DYNAMIC=FALSE
+export MKL_NUM_THREADS=4   # This should be the *same* number as in the line ``#$ -pe smp ...`` above
+export OMP_NUM_THREADS=4   # This should be the *same* number as in the line ``#$ -pe smp ...`` above
+
+# >>> conda initialize >>>
+## echo "Using miniconda3"
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/space/ge38huj/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/space/ge38huj/miniconda3/etc/profile.d/conda.sh" ]; then
+	. "/space/ge38huj/miniconda3/etc/profile.d/conda.sh"
+    else
+	export PATH="/space/ge38huj/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+echo "Execute  job on host $HOSTNAME at $(date)"
+which python
+cd /space/ge38huj/qml
+python ~/qml/main.py -N 400 -pd 1 1 -T 16 -i 4
+echo "finished job at $(date)"

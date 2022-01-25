@@ -64,13 +64,15 @@ def main(chi_tn, L,
     dt.register("test_accuracy", lambda: test_accuracy)
     dt.register("time_elapsed", lambda: time.time() - start)
 
+    Nepochs_to_do = max(100, len(losses)-Nepochs) # Do 100 anyway
+
     si = Nepochs//20 if Nepochs > 20 else Nepochs
     tn = dt.register("model", lambda: tn, save_interval=si)[-1]
 
     print("Starting loss: " + str(loss(tn, next(test_eval))))
 
-    for epoch in range(Nepochs):
-        bar = Bar(f"[Epoch {epoch+1}/{Nepochs}]", max=60000//batch_size)
+    for epoch in range(Nepochs_to_do):
+        bar = Bar(f"[Epoch {epoch+1}/{Nepochs_to_do}]", max=60000//batch_size)
         for batch in training_generator:
             tn, opt_state = update(tn, opt_state, batch)
             bar.next()
@@ -93,7 +95,7 @@ def main(chi_tn, L,
     print("Final test accuracy: " + str(final_acc))
     dt.save_all()
 
-def cluster_main(pd, chi_tn, chi_img, Nepochs=1000):
+def cluster_main(pd, chi_tn, chi_img, Nepochs=1000, **kwargs):
     shape = (32,32)
     dataset_params = dict(transforms=[Resize(shape), ToPatches(pd),\
             FlattenPatches(), Snake(), ColorQubitMPS(chi_img)],\
@@ -112,4 +114,5 @@ def cluster_main(pd, chi_tn, chi_img, Nepochs=1000):
         **dataset_params)
 
 if __name__ == '__main__':
-    cluster_main((1,1), 16, 2, Nepochs=5)
+    import cluster_jobs
+    cluster_jobs.run_simulation_commandline(globals())
