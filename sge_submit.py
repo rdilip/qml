@@ -19,8 +19,7 @@ config = {
     'params': []  # list of dictionaries (containing the kwargs given to the function `sim_fct`)
 }
 
-#for pd in [(1,1), (2, 1), (2, 2), (2, 4), (4,4)]:
-for pd in [(1,1)]:
+for pd in [(2, 1), (2, 2), (2, 4), (4,4)]:
     for chi_tn in [8, 10, 12, 14, 18, 20]:
         for chi_img in [2, 3, 4, 5, 6, 7, 8]:
             kwargs = dict(pd=pd, chi_tn=chi_tn, chi_img=chi_img, Nepochs=2000)

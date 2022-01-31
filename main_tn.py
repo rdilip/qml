@@ -42,9 +42,9 @@ def main(chi_tn, L,
     training_generator = DataLoader(train, batch_size=batch_size, collate_fn=qimage.numpy_collate)
 
     train_eval = DataLoader(train, batch_size=eval_size, collate_fn=qimage.numpy_collate)
-    test_eval = DataLoader(train, batch_size=eval_size, collate_fn=qimage.numpy_collate)
+    test_eval = DataLoader(test, batch_size=eval_size, collate_fn=qimage.numpy_collate)
 
-    final_test_eval = DataLoader(train, batch_size=len(test), collate_fn=qimage.numpy_collate)
+    final_test_eval = DataLoader(test, batch_size=len(test), collate_fn=qimage.numpy_collate)
 
     train_eval, test_eval = cycle(train_eval), cycle(test_eval)
 
@@ -77,7 +77,7 @@ def main(chi_tn, L,
             tn, opt_state = update(tn, opt_state, batch)
             bar.next()
         bar.finish()
-       
+        
         test_accuracy = accuracy(tn, next(test_eval))
         train_accuracy = accuracy(tn, next(train_eval))
         test_loss = loss(tn, next(test_eval))
