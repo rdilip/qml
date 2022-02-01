@@ -31,7 +31,7 @@ def visualize_patched_img(img, pd, size=(32,32), kernel=True, **kwargs):
         for xp in range(pd[1]):
             ax = fig.add_subplot(pd[0], pd[1], yp*pd[1]+xp+1, xticks=[], yticks=[])
             visualize_vector(img[..., yp, xp, :], size=(pNy, pNx), kernel=kernel, **kwargs)
-    plt.subplots_adjust(wspace=0, hspace=0)
+    plt.subplots_adjust(wspace=0.02, hspace=0.05)
 
 def visualize_vector(vec, size=(32,32), kernel=True, normalized=True, scale=1):
     """ Displays a nonpatched vector. 
@@ -51,7 +51,7 @@ def visualize_vector(vec, size=(32,32), kernel=True, normalized=True, scale=1):
         vec *= np.sqrt(np.prod(size))
     if kernel:
         vec = np.arccos(vec[::2]) * 2 / np.pi
-    plt.imshow(vec.reshape((Ny, Nx)), vmin=0, vmax=scale)
+    plt.imshow(vec.reshape((Ny, Nx)), vmin=0, vmax=scale, cmap='gray')
     return vec
 
 def mps_to_vector_img(img, norm_qubit=False):
