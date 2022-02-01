@@ -52,6 +52,8 @@ def main(chi_tn, L,
     attr = ["output", dataset_params['dataset_name'], f"size_{shape[0]}x{shape[1]}",\
             f"patch_{pd[0]}x{pd[1]}", f"chi_img{chi_img}"]
 
+    print("Attributes: " + str(attr))
+
     dt = DataTracker(attr, experimental=False, overwrite=False, chi=chi_tn)
 
     test_accuracy = accuracy(tn, next(test_eval))
@@ -64,7 +66,8 @@ def main(chi_tn, L,
     dt.register("test_accuracy", lambda: test_accuracy)
     dt.register("time_elapsed", lambda: time.time() - start)
 
-    Nepochs_to_do = max(100, len(losses)-Nepochs) # Do 100 anyway
+    Nepochs_to_do = max(100, Nepochs - len(losses)) # Do 100 anyway
+    print(f"Nepochs to do: {Nepochs_to_do}")
 
     si = Nepochs//20 if Nepochs > 20 else Nepochs
     tn = dt.register("model", lambda: tn, save_interval=si)[-1]
@@ -85,9 +88,9 @@ def main(chi_tn, L,
 
         train_accuracy, test_accuracy = jax.device_get((train_accuracy, test_accuracy))
         train_loss, test_loss = jax.device_get((train_loss, test_loss))
-        print(f"Train/Test accuracy: "
+        print(f"Epoch {epoch}: Train/Test accuracy: "
                 f"{train_accuracy:.4f}/{test_accuracy:.4f}.")
-        print(f"Train/Test loss: "
+        print(f"\t Train/Test loss: "
                 f"{train_loss}/{test_loss}")
         dt.update()
 

@@ -37,6 +37,7 @@ class DataTracker:
         self.fpath = "/".join(attr)
         if not os.path.exists(self.fpath):
             os.makedirs(self.fpath)
+        print("Saving to: " + self.fpath)
         if len(kwargs) > 0:
             for label in kwargs:
                 self.fpath += "/" + f"{label}{kwargs[label]}" + "_"

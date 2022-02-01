@@ -51,14 +51,21 @@ def get_dataset(
     dirname = get_dirname(dataset_name, [str(fn) for fn in transforms])
     
     # TODO this doesn't actually work...fix this later
+    # The EOFError catch is for a fairly obscure error that I think occurs sometimes
+    # when I interrupt while pytorch is reading data. I'm not completely certain
+    # why this happens and it means we need to cache it again.
     if os.path.exists(dirname + "train_data.pt") and not overwrite:
-        train = TensorDataset(torch.load(dirname + "train_data.pt"),
-                    torch.load(dirname + "train_targets.pt"))
-        test = TensorDataset(torch.load(dirname + "test_data.pt"),
-                    torch.load(dirname + "test_targets.pt"))
+        try:
+            train = TensorDataset(torch.load(dirname + "train_data.pt"),
+                        torch.load(dirname + "train_targets.pt"))
+            test = TensorDataset(torch.load(dirname + "test_data.pt"),
+                        torch.load(dirname + "test_targets.pt"))
+        except EOFError:
+            print("Encountered EOF Error")
+            train, test = transform_and_cache(dataset_fn, composed_transforms, dirname)
     else:
         train, test = transform_and_cache(dataset_fn, composed_transforms, dirname)
-    print("Loaded and cached dataset")
+    print("Loaded and cached dataset at " + dirname)
     return train, test
 
 def transform_and_cache(dataset_fn, transforms, dirname):
