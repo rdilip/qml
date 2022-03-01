@@ -16,7 +16,7 @@ config = {
     'require': {
         'mem': '8G',
         'cpu': '23:59:00',
-        'Nslots': 4,
+        'Nslots': 16,
         'filesize': '8G'
     },
     'params': []  # list of dictionaries (containing the kwargs given to the function `sim_fct`)
@@ -24,11 +24,20 @@ config = {
 
 
 if not RESTART:
-    for pd in [(1, 1), (2, 1), (2, 2), (2, 4), (4,4)]:
-        for chi_tn in [8, 10, 12, 14, 16, 18, 20]:
-            for chi_img in [2, 3, 4, 5, 6, 7, 8]:
-                kwargs = dict(pd=pd, chi_tn=chi_tn, chi_img=chi_img, Nepochs=3000)
-                config['params'].append(kwargs.copy())
+    for chi_img in [2,3,4,5,6,7,8]:
+        for pd in [(1,1), (2,2), (2,1), (2,4), (4,4)]:
+            kwargs = dict(pd=pd, chi_tn=10, chi_img=chi_img, Nepochs=3000)
+            config['params'].append(kwargs.copy())
+
+    for chi_tn in [8,10,12,14,16, 18,20]:
+        for pd in [(1,1), (2,2), (32,32)]:
+            if chi_tn == 10 and pd in [(1,1), (2,2)]:
+                continue
+            chi_img = 4
+            if pd == (32,32):
+                chi_img = 1
+            kwargs = dict(pd=pd, chi_tn=chi_tn, chi_img=chi_img, Nepochs=3000)
+            config['params'].append(kwargs.copy())
 else:
     restart_dicts = get_restarts("qml.config.pkl")
     for params in restart_dicts:

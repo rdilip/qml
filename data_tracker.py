@@ -49,23 +49,46 @@ class DataTracker:
         self.save_intervals = {"time": 1}
         self.Niter = 0
 
-    def register(self, label, param_func, save_interval=1):
+    def register(self, label, param_func, save_interval=1, is_dict=False):
         """
         Args:
             label: string, name of observation
             param_func: Callable, returns current parameter.
         """
-        self.tracked_params[label] = param_func
-        self.param_data[label] = [param_func()]
-        self.save_intervals[label] = save_interval
+        # TODO make this nicer
+        initial_data = param_func()
+
+        if is_dict:
+            for key in initial_data:
+                self.save_intervals[label + f"_{key}"] = save_interval
+                self.param_data[label + f"_{key}"] = [initial_data[key]]
+                self.tracked_params[label + f"_{key}"] = lambda: param_func()[key]
+        else:
+            self.save_intervals[label] = save_interval
+            self.param_data[label] = [initial_data]
+            self.tracked_params[label] = param_func
 
         if not self.overwrite:
-            data = load(self.fpath, label)
-            if not len(data):
-                self.param_data[label] = [param_func()]
+            if is_dict:
+                keys = initial_data.keys()
+                data = load(self.fpath, label, keys=keys)
+                if data is not None:
+                    for key in keys:
+                        self.param_data[label + f"_{key}"] = list(data[key])
             else:
-                self.param_data[label] = list(data)
-        return self.param_data[label]
+                data = load(self.fpath, label)
+                if data is not None:
+                    self.param_data[label] = list(data)
+
+        # For dicts, e.g., a model, return just the last element. For all other cases,
+        # return the full list.
+        if is_dict:
+            output = {}
+            for key in keys:
+                output[key] = self.param_data[label + f"_{key}"][-1]
+        else:
+            output = self.param_data[label]
+        return output
 
     def update(self):
         """
@@ -91,13 +114,18 @@ class DataTracker:
         for param in self.tracked_params:
             self.save(param)
 
-def load(fpath, label):
+def load(fpath, label, keys=None):
     """ Expanded load function that tries numpy, otherwise goes to pkl.
     """
     try:
-        data = np.load(fpath + label + ".npy", allow_pickle=True)
+        if keys is None:
+            data = np.load(fpath + label + ".npy", allow_pickle=False)
+        else:
+            data = {}
+            for key in keys:
+                data[key] = np.load(fpath + label + f"_{key}.npy", allow_pickle=False)
     except FileNotFoundError:
-        data = []
+        data = None
     return data
 
     

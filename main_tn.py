@@ -64,16 +64,16 @@ def main(chi_tn, L,
     losses = dt.register("loss", lambda: loss(tn, next(test_eval)))
     dt.register("train_accuracy", lambda: train_accuracy)
     dt.register("test_accuracy", lambda: test_accuracy)
-    dt.register("time_elapsed", lambda: time.time() - start)
 
     Nepochs_to_do = max(100, Nepochs - len(losses)) # Do 100 anyway
     print(f"Nepochs to do: {Nepochs_to_do}")
 
     si = Nepochs//20 if Nepochs > 20 else Nepochs
-    tn = dt.register("model", lambda: tn, save_interval=si)[-1]
+    tn = dt.register("model", lambda: tn, save_interval=si, is_dict=True)
 
     print("Starting loss: " + str(loss(tn, next(test_eval))))
 
+    best_performance = 0.
     for epoch in range(Nepochs_to_do):
         bar = Bar(f"[Epoch {epoch+1}/{Nepochs_to_do}]", max=60000//batch_size)
         for batch in training_generator:
@@ -92,6 +92,7 @@ def main(chi_tn, L,
                 f"{train_accuracy:.4f}/{test_accuracy:.4f}.")
         print(f"\t Train/Test loss: "
                 f"{train_loss}/{test_loss}")
+
         dt.update()
 
     final_acc = jax.device_get(accuracy(tn, next(cycle(final_test_eval))))
