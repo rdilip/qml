@@ -59,15 +59,20 @@ class DataTracker:
         initial_data = param_func()
 
         if is_dict:
-            for key in initial_data:
+            self.model_func = param_func
+            for key in initial_data.keys():
+                # Need to use a closure as a function factory to avoid late binding
+                def make_param_func_key(key):
+                    def f():
+                        return param_func()[key]
+                    return f
                 self.save_intervals[label + f"_{key}"] = save_interval
                 self.param_data[label + f"_{key}"] = [initial_data[key]]
-                self.tracked_params[label + f"_{key}"] = lambda: param_func()[key]
+                self.tracked_params[label + f"_{key}"] = make_param_func_key(key)
         else:
             self.save_intervals[label] = save_interval
             self.param_data[label] = [initial_data]
             self.tracked_params[label] = param_func
-
         if not self.overwrite:
             if is_dict:
                 keys = initial_data.keys()
@@ -79,7 +84,6 @@ class DataTracker:
                 data = load(self.fpath, label)
                 if data is not None:
                     self.param_data[label] = list(data)
-
         # For dicts, e.g., a model, return just the last element. For all other cases,
         # return the full list.
         if is_dict:
@@ -108,7 +112,8 @@ class DataTracker:
         if self.exp:
             return
         data = self.param_data[param_label]
-        np.save(self.fpath + param_label + ".npy", data, allow_pickle=True)
+        # Store as np array, cast to list on output
+        np.save(self.fpath + param_label + ".npy", np.array(data, dtype=float), allow_pickle=False)
 
     def save_all(self):
         for param in self.tracked_params:
@@ -123,7 +128,11 @@ def load(fpath, label, keys=None):
         else:
             data = {}
             for key in keys:
-                data[key] = np.load(fpath + label + f"_{key}.npy", allow_pickle=False)
+                # NOTE We store the data as a list of numpy arrays, even though we could
+                # store it as a single numpy array, so that we can dynamically append 
+                # each model to it. This means that we need to set allow_pickle=True
+                # because the're technically object arrays
+                data[key] = np.load(fpath + label + f"_{key}.npy", allow_pickle=True)
     except FileNotFoundError:
         data = None
     return data

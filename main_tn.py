@@ -70,7 +70,7 @@ def main(chi_tn, L,
 
     si = Nepochs//20 if Nepochs > 20 else Nepochs
     tn = dt.register("model", lambda: tn, save_interval=si, is_dict=True)
-
+    dt.update()
     print("Starting loss: " + str(loss(tn, next(test_eval))))
 
     best_performance = 0.
