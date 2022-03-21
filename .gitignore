@@ -13,3 +13,7 @@ nb/
 !/.gitignore
 *.pt
 output/
+*.sge
+cluster_jobs.py
+sge_submit.py
+restart.py
