@@ -54,13 +54,12 @@ def main(chi_tn, L,
 
     print("Attributes: " + str(attr))
 
-    dt = DataTracker(attr, experimental=False, overwrite=False, chi=chi_tn)
+    dt = DataTracker(attr, experimental=True, overwrite=False, chi=chi_tn)
 
     test_accuracy = accuracy(tn, next(test_eval))
     train_accuracy = accuracy(tn, next(train_eval))
     train_accuracy, test_accuracy = jax.device_get((train_accuracy, test_accuracy))
     start = time.time()
-
     losses = dt.register("loss", lambda: loss(tn, next(test_eval)))
     dt.register("train_accuracy", lambda: train_accuracy)
     dt.register("test_accuracy", lambda: test_accuracy)

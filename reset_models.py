@@ -32,6 +32,8 @@ def reset_models(chi_imgs, chi_tns, pds):
                 fpath = get_fpath(pd, chi_img, chi_tn)
                 if not os.path.exists(fpath + "OLD/"):
                     os.makedirs(fpath + "OLD/")
+                if os.path.exists(fpath + "chi{chi_tn}_model.npy"):
+                    raise ValueError
                 try:
                     models = np.load(fpath + f"OLD/chi{chi_tn}_model.npy", allow_pickle=True)
                     for key in models[-1].keys():
@@ -39,35 +41,37 @@ def reset_models(chi_imgs, chi_tns, pds):
                         np.save(fpath + f"chi{chi_tn}_model_{key}.npy", data)
                     # os.rename(fpath + f"chi{chi_tn}_model.npy", fpath + f"OLD/chi{chi_tn}_model.npy")
                 except FileNotFoundError:
-                    continue
+                    for key in ["left", "right", "center"]:
+                        if os.path.exists(fpath + f"chi{chi_tn}_model_{key}.npy"):
+                            os.remove(fpath + f"chi{chi_tn}_model_{key}.npy")
                 except UnpicklingError as e:
                     log(f"{chi_img}, {chi_tn}, {pd}\t" + str(e))
                     for label in ["model", "loss", "time", "time_elapsed", "train_accuracy", "test_accuracy"]:
                         if os.path.exists(fpath + f"chi{chi_tn}_{label}.npy"):
                             os.rename(fpath + f"chi{chi_tn}_{label}.npy", fpath + f"OLD/chi{chi_tn}_{label}.npy")
+                        for key in ["left", "right", "center"]:
+                            if os.path.exists(fpath + f"chi{chi_tn}_model_{key}.npy"):
+                                os.remove(fpath + f"chi{chi_tn}_model_{key}.npy")
                 except OSError as e:
                     log(f"{chi_img}, {chi_tn}, {pd}\t" + str(e))
                     for label in ["model", "loss", "time", "time_elapsed", "train_accuracy", "test_accuracy"]:
                         if os.path.exists(fpath + f"chi{chi_tn}_{label}.npy"):
                             os.rename(fpath + f"chi{chi_tn}_{label}.npy", fpath + f"OLD/chi{chi_tn}_{label}.npy")
-                breakpoint()
+                        for key in ["left", "right", "center"]:
+                            if os.path.exists(fpath + f"chi{chi_tn}_model_{key}.npy"):
+                                os.remove(fpath + f"chi{chi_tn}_model_{key}.npy")
+                       
 
 def reset_accuracies(chi_imgs, chi_tns, pds):
     for chi_img in chi_imgs:
-        for chi_tn in chi_tns:
-            for pd in pds:
-                dataset_params = dict(transforms=[Resize((32,32)), ToPatches(pd), FlattenPatches(), Snake(),\
+        for pd in pds:
+            dataset_params = dict(transforms=[Resize((32,32)), ToPatches(pd), FlattenPatches(), Snake(),\
                     ColorQubitMPS(chi_img)], dataset_name="fashion-mnist")
-                pixels_per_patch = 32 * 32 // np.prod(pd)
-                if pixels_per_patch == 1:
-                    L = 32*32
-                else:
-                    L = int(np.prod(pd) * (int(np.ceil(np.log2(pixels_per_patch))) + 1))
-                train, test = qimage.get_dataset(**dataset_params)
-                train_eval = DataLoader(train, batch_size=1000, collate_fn=qimage.numpy_collate)
-                test_eval = DataLoader(test, batch_size=1000, collate_fn=qimage.numpy_collate)
-                train_eval, test_eval = cycle(train_eval), cycle(test_eval)
-
+            train, test = qimage.get_dataset(**dataset_params)
+            train_eval = DataLoader(train, batch_size=1000, collate_fn=qimage.numpy_collate)
+            test_eval = DataLoader(test, batch_size=1000, collate_fn=qimage.numpy_collate)
+            train_eval, test_eval = cycle(train_eval), cycle(test_eval)
+            for chi_tn in chi_tns:
                 fpath = get_fpath(pd, chi_img, chi_tn)
                 test_path = fpath + f"chi{chi_tn}_test_accuracy.npy"
                 model = load(fpath + f"chi{chi_tn}_", "model", keys=["left", "center", "right"])
@@ -80,9 +84,6 @@ def reset_accuracies(chi_imgs, chi_tns, pds):
                 if len(data) != len(model["left"]):
                     # Recover data by loading the models
                     print(chi_img, chi_tn, pd)
-                    if model is None:
-                        print("\t COuldn't find file -- it probably doesn't exist yet")
-                        continue
                     
                     new_train = np.zeros(shape=model["left"].shape[0])
                     new_test = np.zeros(shape=model["left"].shape[0])
@@ -91,7 +92,6 @@ def reset_accuracies(chi_imgs, chi_tns, pds):
                         tn = {}
                         for key in model:
                             tn[key] = model[key][-i]
-                        breakpoint()
                         new_test[-i] = accuracy(tn, next(test_eval))
                         new_train[-i] = accuracy(tn, next(train_eval))
                         new_loss[-i] = loss(tn, next(test_eval))
@@ -103,9 +103,6 @@ if __name__ == '__main__':
     chi_imgs = [2, 3, 4, 5, 6, 7, 8]
     chi_tns = [8, 10, 12, 14, 16, 18, 20]
     pds = [(1,1), (2,1), (2,2), (2,4), (4,4)]
-    chi_imgs = [3]
-    chi_tns = [10]
-    pds = [(2,4)]
-    reset_models(chi_imgs, chi_tns, pds)
+    # reset_models(chi_imgs, chi_tns, pds)
     reset_accuracies(chi_imgs, chi_tns, pds)
 

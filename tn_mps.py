@@ -16,7 +16,6 @@ def _reduce_mps(x0, x1):
 def evaluate(tn, img):
     """ img should be shape (L, 2) """
     chi = tn['left'].shape[-1]
-
     L = img.shape[0]
     start = jnp.tensordot(tn['left'].reshape((-1,1,chi)), img[0], [0,0]).transpose((0,2,1,3))
     center = jnp.einsum("xpab,xpcd->xacbd", tn['center'], img[1:-1])

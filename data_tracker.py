@@ -57,8 +57,9 @@ class DataTracker:
         """
         # TODO make this nicer
         initial_data = param_func()
-
+        keys = None
         if is_dict:
+            keys = initial_data.keys()
             self.model_func = param_func
             for key in initial_data.keys():
                 # Need to use a closure as a function factory to avoid late binding
@@ -86,6 +87,7 @@ class DataTracker:
                     self.param_data[label] = list(data)
         # For dicts, e.g., a model, return just the last element. For all other cases,
         # return the full list.
+
         if is_dict:
             output = {}
             for key in keys:
